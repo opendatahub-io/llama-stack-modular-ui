@@ -22,13 +22,4 @@ module.exports = merge(common('development'), {
       overlay: true,
     },
   },
-  module: {
-    rules: [
-      {
-        test: /\.css$/,
-        include: [...stylePaths],
-        use: ['style-loader', 'css-loader'],
-      },
-    ],
-  },
 });
