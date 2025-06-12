@@ -1,28 +1,30 @@
 # Source code for the repos
-#ARG UI_SOURCE_CODE=./frontend
+ARG UI_SOURCE_CODE=./frontend
 ARG BFF_SOURCE_CODE=./bff
 
 # Set the base images for the build stages
-#ARG NODE_BASE_IMAGE=node:20
-ARG GOLANG_BASE_IMAGE=golang:1.23.5
+ARG NODE_BASE_IMAGE=node:20
+ARG GOLANG_BASE_IMAGE=golang:1.24.3
 ARG DISTROLESS_BASE_IMAGE=gcr.io/distroless/static:nonroot
 
 # UI build stage
-#FROM ${NODE_BASE_IMAGE} AS ui-builder
+FROM ${NODE_BASE_IMAGE} AS ui-builder
 
-#ARG UI_SOURCE_CODE
-#ARG DEPLOYMENT_MODE
-#ARG MOCK_AUTH
+ARG UI_SOURCE_CODE
+ARG DEPLOYMENT_MODE
 
-#WORKDIR /usr/src/app
+WORKDIR /usr/src/app
 
 # Copy the source code to the container
-#COPY ${UI_SOURCE_CODE} /usr/src/app
+COPY ${UI_SOURCE_CODE} /usr/src/app
+
+# List files for debugging
+RUN ls -la /usr/src/app
 
 # Install the dependencies and build
-#RUN npm cache clean --force
-#RUN npm ci --omit=optional
-#RUN npm run build:prod
+RUN npm cache clean --force
+RUN npm ci --omit=optional
+RUN npm run build
 
 # BFF build stage
 FROM ${GOLANG_BASE_IMAGE} AS bff-builder
@@ -43,8 +45,6 @@ RUN go mod download
 # Copy the go source files
 COPY ${BFF_SOURCE_CODE}/cmd/ cmd/
 COPY ${BFF_SOURCE_CODE}/internal/ internal/
-##temp just for now <----- CHANGEME
-COPY ${BFF_SOURCE_CODE}/static/ static/
 
 # Build the Go application
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bff ./cmd
@@ -53,9 +53,8 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bf
 # Use distroless as minimal base image to package the application binary
 FROM ${DISTROLESS_BASE_IMAGE}
 WORKDIR /
-COPY --from=bff-builder /usr/src/app/bff ./ 
-COPY --from=bff-builder /usr/src/app/static ./static/
-#COPY --from=ui-builder /usr/src/app/dist ./static/
+COPY --from=bff-builder /usr/src/app/bff ./
+COPY --from=ui-builder /usr/src/app/dist ./static/
 USER 65532:65532
 
 # Expose port 8080
