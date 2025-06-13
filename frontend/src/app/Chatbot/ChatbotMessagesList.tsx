@@ -17,6 +17,7 @@ const ChatbotMessagesList: React.FC<ChatbotMessagesListProps> = ({
         {index === messageList.length - 1 && <div ref={scrollRef} />}
       </React.Fragment>
     ))}
+    {messageList.length === 0 && <div ref={scrollRef} />}
   </>
 );
 

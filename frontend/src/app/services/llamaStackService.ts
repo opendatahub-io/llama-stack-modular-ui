@@ -3,7 +3,7 @@ import type { Model as LlamaModel } from 'llama-stack-client/resources/models';
 import axios from '../utils/axios';
 
 // Roles must be 'user' and 'assistant' according to the Llama Stack API
-type ChatMessage = {
+export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   stop_reason?: string;
@@ -15,7 +15,8 @@ export const listModels = (): Promise<LlamaModel[]> => {
     .get(url)
     .then((response) => response.data)
     .catch((e) => {
-      throw new Error(e.response.data.message);
+      const errorMessage = e.response?.data?.message || e.message || 'Failed to fetch models';
+      throw new Error(errorMessage);
     });
 };
 

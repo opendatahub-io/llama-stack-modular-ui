@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Alert, Button, Label, Spinner, Title } from '@patternfly/react-core';
+import { Alert, Button, Label, PageSection, Spinner, Title } from '@patternfly/react-core';
 import { 
   Chatbot, 
   ChatbotContent, 
@@ -18,18 +18,12 @@ import {
 import { ShareSquareIcon } from '@patternfly/react-icons';
 import { ChatbotMessages } from './ChatbotMessagesList';
 import { ChatbotShareModal } from './ChatbotShareModal';
-import { completeChat } from '@app/services/llamaStackService';
+import { type ChatMessage, completeChat } from '@app/services/llamaStackService';
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
 import { generateId } from '@app/utils/utils';
 import botAvatar from '../bgimages/bot_avatar.svg';
 import userAvatar from '../bgimages/user_avatar.svg';
 import '@patternfly/chatbot/dist/css/main.css';
-
-type ChatMessage = {
-  role: 'user' | 'assistant';
-  content: string;
-  stop_reason?: string;
-};
 
 const initialBotMessage: MessageProps = {
   id: crypto.randomUUID(),
@@ -43,7 +37,7 @@ const ChatbotMain: React.FunctionComponent = () => {
   const displayMode = ChatbotDisplayMode.fullscreen;
   const [isMessageSendButtonDisabled, setIsMessageSendButtonDisabled] = React.useState(false);
   const [messages, setMessages] = React.useState<MessageProps[]>([initialBotMessage]);
-  const [showPopover, setShowPopover] = React.useState(true);
+  const [showPopover, setShowPopover] = React.useState(false);
   const [isShareChatbotOpen, setIsShareChatbotOpen] = React.useState(false);
   const scrollToBottomRef = React.useRef<HTMLDivElement>(null);
   const { models, loading, error, fetchLlamaModels } = useFetchLlamaModels();
@@ -61,8 +55,8 @@ const ChatbotMain: React.FunctionComponent = () => {
       },
       popoverProps: {
         isVisible: showPopover,
-        shouldClose: () => setShowPopover(!showPopover),
-        shouldOpen: () => setShowPopover(!showPopover),
+        shouldClose: () => setShowPopover(false),
+        shouldOpen: () => setShowPopover(true),
         bodyContent: 'Always review AI generated content prior to use',
       },
       cta: {
@@ -96,7 +90,7 @@ const ChatbotMain: React.FunctionComponent = () => {
   }
   
   if (error) {
-    <Alert variant="warning" isInline title="Cannot fetch models">
+    return <Alert variant="warning" isInline title="Cannot fetch models">
       {error}
     </Alert>;
   }
@@ -158,7 +152,7 @@ const ChatbotMain: React.FunctionComponent = () => {
   };
 
   return (
-    <>
+    <PageSection>
       {isShareChatbotOpen && (
         <ChatbotShareModal onToggle={() => setIsShareChatbotOpen(!isShareChatbotOpen)} />
       )}
@@ -174,8 +168,7 @@ const ChatbotMain: React.FunctionComponent = () => {
                 color="blue"
                 style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}
               >
-                {/* {modelId} */}
-                Llama
+                {modelId}
               </Label>
             </ChatbotHeaderTitle>
           </ChatbotHeaderMain>
@@ -205,7 +198,6 @@ const ChatbotMain: React.FunctionComponent = () => {
             onSendMessage={(message) => {
               if (typeof message === 'string') {
                 handleMessageSend(message);
-                console.log(message);
               }
             }}
             hasAttachButton={false}
@@ -215,7 +207,7 @@ const ChatbotMain: React.FunctionComponent = () => {
           <ChatbotFootnote {...footnoteProps} />
         </ChatbotFooter>
       </Chatbot>
-    </>
+    </PageSection>
   );
 }
 

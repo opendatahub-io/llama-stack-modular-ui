@@ -9,10 +9,10 @@ const useFetchLlamaModels = (): {
   fetchLlamaModels: () => Promise<void>;
 } => {
   const [models, setModels] = React.useState<LlamaModel[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const fetchLlamaModels = async () => {
+  const fetchLlamaModels = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -21,11 +21,11 @@ const useFetchLlamaModels = (): {
 
       setModels(modelList);
     } catch (err) {
-      setError('Failed to fetch models');
+      setError(err instanceof Error ? err.message : 'Failed to fetch models');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return { models, loading, error, fetchLlamaModels };
 };
