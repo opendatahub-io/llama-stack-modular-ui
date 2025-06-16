@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  Button,
-  ClipboardCopy,
-  Modal,
-  ModalBody,
-  ModalHeader,
-  ModalVariant,
-} from '@patternfly/react-core';
+import { Button, ClipboardCopy, Modal, ModalBody, ModalHeader, ModalVariant } from '@patternfly/react-core';
 import { ExternalLinkSquareAltIcon } from '@patternfly/react-icons';
 
 type ChatbotShareModalProps = {
@@ -17,12 +10,17 @@ const ChatbotShareModal: React.FC<ChatbotShareModalProps> = ({ onToggle }) => {
   const shareUrl = window.location.href;
 
   return (
-    <Modal variant={ModalVariant.small} isOpen onClose={onToggle} aria-labelledby="share-modal-title" data-testid="share-modal">
-      <ModalHeader
-        title="Share Chatbot"
-      />
+    <Modal
+      variant={ModalVariant.small}
+      isOpen
+      onClose={onToggle}
+      aria-labelledby="share-modal-title"
+      data-testid="share-modal"
+    >
+      <ModalHeader title="Share Chatbot" />
       <ModalBody>
-        <p>Share this chatbot with teammates outside of Openshift AI</p><br />
+        <p>Share this chatbot with teammates outside of Openshift AI</p>
+        <br />
         <p
           style={{
             fontWeight: 'var(--pf-t--global--font--weight--body--bold)',

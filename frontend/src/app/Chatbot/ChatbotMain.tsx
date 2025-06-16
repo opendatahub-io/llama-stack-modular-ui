@@ -1,32 +1,33 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from 'react';
-import { Alert, Button, Label, PageSection, Spinner, Title } from '@patternfly/react-core';
-import { 
-  Chatbot, 
-  ChatbotContent, 
-  ChatbotDisplayMode, 
-  ChatbotFooter, 
-  ChatbotFootnote, 
-  ChatbotHeader, 
-  ChatbotHeaderActions, 
-  ChatbotHeaderMain, 
-  ChatbotHeaderTitle, 
-  ChatbotWelcomePrompt, 
-  MessageBar, 
-  MessageBox, 
-  MessageProps 
+import { Alert, Button, Label, Spinner, Title } from '@patternfly/react-core';
+import {
+  Chatbot,
+  ChatbotContent,
+  ChatbotDisplayMode,
+  ChatbotFooter,
+  ChatbotFootnote,
+  ChatbotHeader,
+  ChatbotHeaderActions,
+  ChatbotHeaderMain,
+  ChatbotHeaderTitle,
+  ChatbotWelcomePrompt,
+  MessageBar,
+  MessageBox,
+  MessageProps,
 } from '@patternfly/chatbot';
-import { ShareSquareIcon } from '@patternfly/react-icons';
-import { ChatbotMessages } from './ChatbotMessagesList';
-import { ChatbotShareModal } from './ChatbotShareModal';
-import { type ChatMessage, completeChat } from '@app/services/llamaStackService';
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
+import { ShareSquareIcon } from '@patternfly/react-icons';
+import { ChatbotShareModal } from './ChatbotShareModal';
+import { ChatbotMessages } from './ChatbotMessagesList';
+import { ChatMessage, completeChat } from '@app/services/llamaStackService';
 import { generateId } from '@app/utils/utils';
-import botAvatar from '../bgimages/bot_avatar.svg';
 import userAvatar from '../bgimages/user_avatar.svg';
+import botAvatar from '../bgimages/bot_avatar.svg';
 import '@patternfly/chatbot/dist/css/main.css';
 
 const initialBotMessage: MessageProps = {
-  id: crypto.randomUUID(),
+  id: generateId(),
   role: 'bot',
   content: 'Hello! Ask a question to test out your AI system',
   name: 'Bot',
@@ -34,7 +35,7 @@ const initialBotMessage: MessageProps = {
 };
 
 const ChatbotMain: React.FunctionComponent = () => {
-  const displayMode = ChatbotDisplayMode.fullscreen;
+  const displayMode = ChatbotDisplayMode.embedded;
   const [isMessageSendButtonDisabled, setIsMessageSendButtonDisabled] = React.useState(false);
   const [messages, setMessages] = React.useState<MessageProps[]>([initialBotMessage]);
   const [showPopover, setShowPopover] = React.useState(false);
@@ -53,12 +54,7 @@ const ChatbotMain: React.FunctionComponent = () => {
         src: 'https://cdn.dribbble.com/userupload/10651749/file/original-8a07b8e39d9e8bf002358c66fce1223e.gif',
         alt: 'Image for footnote popover',
       },
-      popoverProps: {
-        isVisible: showPopover,
-        shouldClose: () => setShowPopover(false),
-        shouldOpen: () => setShowPopover(true),
-        bodyContent: 'Always review AI generated content prior to use',
-      },
+      isVisible: showPopover,
       cta: {
         label: 'Dismiss',
         onClick: () => setShowPopover(!showPopover),
@@ -88,12 +84,13 @@ const ChatbotMain: React.FunctionComponent = () => {
   if (loading) {
     return <Spinner size="sm" />;
   }
-  
-  if (error) {
-    return <Alert variant="warning" isInline title="Cannot fetch models">
-      {error}
-    </Alert>;
-  }
+
+  // TODO: Uncomment this when we have the BFF working
+  // if (error) {
+  //   return <Alert variant="warning" isInline title="Cannot fetch models">
+  //     {error}
+  //   </Alert>;
+  // };
 
   const handleMessageSend = async (userInput: string) => {
     if (!userInput || !modelId) {
@@ -152,10 +149,8 @@ const ChatbotMain: React.FunctionComponent = () => {
   };
 
   return (
-    <PageSection>
-      {isShareChatbotOpen && (
-        <ChatbotShareModal onToggle={() => setIsShareChatbotOpen(!isShareChatbotOpen)} />
-      )}
+    <>
+      {isShareChatbotOpen && <ChatbotShareModal onToggle={() => setIsShareChatbotOpen(!isShareChatbotOpen)} />}
       <Chatbot displayMode={displayMode} data-testid="chatbot">
         <ChatbotHeader>
           <ChatbotHeaderMain>
@@ -163,11 +158,7 @@ const ChatbotMain: React.FunctionComponent = () => {
               <Title headingLevel="h1" size="xl" style={{ fontWeight: 'bold' }}>
                 Chatbot
               </Title>
-              <Label
-                variant="outline"
-                color="blue"
-                style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}
-              >
+              <Label variant="outline" color="blue" style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}>
                 {modelId}
               </Label>
             </ChatbotHeaderTitle>
@@ -186,10 +177,7 @@ const ChatbotMain: React.FunctionComponent = () => {
         </ChatbotHeader>
         <ChatbotContent>
           <MessageBox position="bottom">
-            <ChatbotWelcomePrompt
-              title="Hello, User!"
-              description="Ask a question to chat with your model"
-            />
+            <ChatbotWelcomePrompt title="Hello, User!" description="Ask a question to chat with your model" />
             <ChatbotMessages messageList={messages} scrollRef={scrollToBottomRef} />
           </MessageBox>
         </ChatbotContent>
@@ -207,8 +195,8 @@ const ChatbotMain: React.FunctionComponent = () => {
           <ChatbotFootnote {...footnoteProps} />
         </ChatbotFooter>
       </Chatbot>
-    </PageSection>
+    </>
   );
-}
+};
 
 export { ChatbotMain };
