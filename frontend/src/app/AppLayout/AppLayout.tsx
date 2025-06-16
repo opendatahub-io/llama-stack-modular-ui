@@ -33,6 +33,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
             icon={<BarsIcon />}
             variant="plain"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-expanded={sidebarOpen}
             aria-label="Global navigation"
           />
         </MastheadToggle>
@@ -88,11 +89,15 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
 
   const location = useLocation();
 
-  const renderNavItem = (route: IAppRoute, index: number) => (
-    <NavItem key={`${route.label}-${index}`} id={`${route.label}-${index}`} isActive={route.path === location.pathname}>
-      <NavLink to={route.path}>{route.label}</NavLink>
-    </NavItem>
-  );
+  const renderNavItem = (route: IAppRoute) => {
+    const navItemId = `nav-item-${route.path.replace(/[^\w-]/g, '')}`;
+
+    return (
+      <NavItem key={route.path} id={navItemId} isActive={route.path === location.pathname}>
+        <NavLink to={route.path}>{route.label}</NavLink>
+      </NavItem>
+    );
+  };
 
   const renderNavGroup = (group: IAppRouteGroup, groupIndex: number) => (
     <NavExpandable
