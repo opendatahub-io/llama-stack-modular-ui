@@ -1,6 +1,6 @@
 # Chatbot UI
 
-This project is a chatbot UI built with PatternFly, React, and TypeScript. It provides a modern, responsive interface, leveraging PatternFly’s [Chatbot extension](https://www.patternfly.org/patternfly-ai/chatbot/overview) for a consistent look and feel.
+This project is a chatbot UI built with PatternFly, React, and TypeScript. It provides a modern, responsive interface, leveraging PatternFly's [Chatbot extension](https://www.patternfly.org/patternfly-ai/chatbot/overview) for a consistent look and feel.
 
 ## Quick-start
 
@@ -37,6 +37,18 @@ npm run bundle-profile:analyze
 
 # Start the express server (run a production build first)
 npm run start
+
+# Run type checking without emitting files
+npm run type-check
+
+# Run all CI checks (type checking, linting, and test coverage)
+npm run ci-checks
+
+# Clean the dist directory
+npm run clean
+
+# Generate a webpack bundle profile
+npm run build:bundle-profile
 ```
 
 ## Configurations
