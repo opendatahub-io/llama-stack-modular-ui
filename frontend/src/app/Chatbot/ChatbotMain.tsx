@@ -21,13 +21,13 @@ import { ShareSquareIcon } from '@patternfly/react-icons';
 import { ChatbotShareModal } from './ChatbotShareModal';
 import { ChatbotMessages } from './ChatbotMessagesList';
 import { ChatMessage, completeChat } from '@app/services/llamaStackService';
-import { generateId } from '@app/utils/utils';
+import { getId } from '@app/utils/utils';
 import userAvatar from '../bgimages/user_avatar.svg';
 import botAvatar from '../bgimages/bot_avatar.svg';
 import '@patternfly/chatbot/dist/css/main.css';
 
 const initialBotMessage: MessageProps = {
-  id: generateId(),
+  id: getId(),
   role: 'bot',
   content: 'Hello! Ask a question to test out your AI system',
   name: 'Bot',
@@ -100,7 +100,7 @@ const ChatbotMain: React.FunctionComponent = () => {
     setIsMessageSendButtonDisabled(true);
 
     const userMessage: MessageProps = {
-      id: generateId(),
+      id: getId(),
       role: 'user',
       content: userInput,
       name: 'User',
@@ -124,7 +124,7 @@ const ChatbotMain: React.FunctionComponent = () => {
       const completion = responseObject?.completion_message;
 
       const assistantMessage: MessageProps = {
-        id: generateId(),
+        id: getId(),
         role: 'bot',
         content: completion?.content ?? 'Error receiving response',
         name: 'Bot',
@@ -136,7 +136,7 @@ const ChatbotMain: React.FunctionComponent = () => {
       setMessages((prev) => [
         ...prev,
         {
-          id: generateId(),
+          id: getId(),
           role: 'bot',
           content: `An error occurred while generating a response: ${err}`,
           name: 'Bot',

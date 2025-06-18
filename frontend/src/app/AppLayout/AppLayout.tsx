@@ -89,11 +89,11 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
 
   const location = useLocation();
 
-  const renderNavItem = (route: IAppRoute) => {
+  const renderNavItem = (route: IAppRoute, idx: number) => {
     const navItemId = `nav-item-${route.path.replace(/[^\w-]/g, '')}`;
 
     return (
-      <NavItem key={route.path} id={navItemId} isActive={route.path === location.pathname}>
+      <NavItem key={`${idx}-${route.path}`} id={navItemId} isActive={route.path === location.pathname}>
         <NavLink to={route.path}>{route.label}</NavLink>
       </NavItem>
     );

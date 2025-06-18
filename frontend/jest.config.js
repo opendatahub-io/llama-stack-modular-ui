@@ -12,21 +12,27 @@ module.exports = {
   coverageDirectory: 'coverage',
 
   // An array of directory names to be searched recursively up from the requiring module's location
-  moduleDirectories: [
-    "node_modules",
-    "<rootDir>/src"
-  ],
+  moduleDirectories: ['node_modules', '<rootDir>/src'],
 
   // A map from regular expressions to module names that allow to stub out resources with a single module
   moduleNameMapper: {
     '\\.(css|less)$': '<rootDir>/__mocks__/styleMock.js',
-    "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
+    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': '<rootDir>/__mocks__/fileMock.js',
     "@app/(.*)": '<rootDir>/src/app/$1'
   },
 
-  // A preset that is used as a base for Jest's configuration
-  preset: "ts-jest/presets/js-with-ts",
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+
+  transform: {
+    '^.+\\.[jt]sx?$': 'babel-jest',
+  },
+
+  transformIgnorePatterns: [
+    'node_modules/(?!(\\@patternfly|@data-driven-forms|react-syntax-highlighter|remark-gfm|react-markdown|remark-parse|micromark|micromark-util.*|mdast-util.*|hast-util.*|unist-util.*|vfile.*|bail|is-plain-obj|trough|zwitch|devlop|comma-separated-tokens|estree-util-is-identifier-name|property-information|space-separated-tokens|html-url-attributes|decode-named-character-reference|micromark.*|remark-rehype|trim-lines|unified|ccount|escape-string-regexp|markdown-table|longest-streak|rehype.*|is-absolute-url)/)',
+  ],
 
   // The test environment that will be used for testing.
-  testEnvironment: "jest-fixed-jsdom",
+  testEnvironment: 'jsdom',
+  
+  watchman: false,
 };
