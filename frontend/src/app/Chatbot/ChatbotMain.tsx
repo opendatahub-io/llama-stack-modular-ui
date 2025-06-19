@@ -78,11 +78,7 @@ const ChatbotMain: React.FunctionComponent = () => {
   };
 
   React.useEffect(() => {
-    const fetchModels = async () => {
-      await fetchLlamaModels();
-    };
-
-    fetchModels();
+    fetchLlamaModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -212,7 +208,7 @@ const ChatbotMain: React.FunctionComponent = () => {
                   )
                 }}
               >
-                {models.map((model) => (
+                {Array.isArray(models) && models.map((model) => (
                   <SelectOption key={model.identifier} value={model.identifier}>
                     {model.identifier}
                   </SelectOption>
