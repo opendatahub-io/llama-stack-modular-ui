@@ -13,7 +13,7 @@ export const listModels = (): Promise<LlamaModel[]> => {
   const url = '/api/llama-stack/v1/models';
   return axios
     .get(url)
-    .then((response) => response.data)
+    .then((response) => response.data.data)
     .catch((e) => {
       throw new Error(e.response.data.message);
     });
