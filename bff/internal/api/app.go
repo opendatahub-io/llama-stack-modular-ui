@@ -53,8 +53,7 @@ func (app *App) Routes() http.Handler {
 	appMux.HandleFunc("/api/llama-stack/", func(w http.ResponseWriter, r *http.Request) {
 		llamaStackURL := os.Getenv("LLAMA_STACK_URL")
 		if llamaStackURL == "" {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("LLAMA_STACK_URL not set"))
+			http.Error(w, "LLAMA_STACK_URL not set", http.StatusInternalServerError)
 			return
 		}
 		proxyPath := r.URL.Path[len("/api/llama-stack"):]
@@ -69,8 +68,7 @@ func (app *App) Routes() http.Handler {
 		// Create new request
 		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Failed to create proxy request: " + err.Error()))
+			http.Error(w, "Failed to create proxy request: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		// Copy headers
@@ -80,8 +78,7 @@ func (app *App) Routes() http.Handler {
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			w.Write([]byte("Proxy error: " + err.Error()))
+			http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
 			return
 		}
 		defer resp.Body.Close()
@@ -92,7 +89,9 @@ func (app *App) Routes() http.Handler {
 			w.Header()[k] = v
 		}
 		w.WriteHeader(resp.StatusCode)
-		io.Copy(w, resp.Body)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			app.logger.Error("Failed to copy response body", slog.String("error", err.Error()))
+		}
 	})
 	// --- END PROXY HANDLER ---
 
