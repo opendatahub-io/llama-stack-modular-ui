@@ -103,6 +103,7 @@ const ChatbotMain: React.FunctionComponent = () => {
 
   const handleMessageSend = async (userInput: string) => {
     if (!userInput || !modelId) {
+      console.log('No user input or model ID ', userInput, modelId);
       return;
     }
 
@@ -129,6 +130,7 @@ const ChatbotMain: React.FunctionComponent = () => {
 
     try {
       const response = await completeChat(transformMessage, modelId);
+      console.log('Raw completion response:', response);
       const responseObject = JSON.parse(response);
       const completion = responseObject?.completion_message;
 
