@@ -51,7 +51,7 @@ func (app *App) Routes() http.Handler {
 	appMux.Handle(ApiPathPrefix+"/", app.RequireAuth(apiRouter))
 
 	// --- PROXY HANDLER FOR /api/llama-stack/* ---
-	appMux.HandleFunc("/api/llama-stack/", func(w http.ResponseWriter, r *http.Request) {
+	appMux.Handle("/api/llama-stack/", app.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		llamaStackURL := os.Getenv("LLAMA_STACK_URL")
 		if llamaStackURL == "" {
 			http.Error(w, "LLAMA_STACK_URL not set", http.StatusInternalServerError)
@@ -93,7 +93,7 @@ func (app *App) Routes() http.Handler {
 		if _, err := io.Copy(w, resp.Body); err != nil {
 			app.logger.Error("Failed to copy response body", slog.String("error", err.Error()))
 		}
-	})
+	})))
 	// --- END PROXY HANDLER ---
 
 	//file server for the frontend file and SPA routes
