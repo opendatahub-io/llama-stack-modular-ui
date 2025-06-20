@@ -3,7 +3,7 @@ import { ExclamationTriangleIcon } from '@patternfly/react-icons';
 import { Button, EmptyState, EmptyStateBody, EmptyStateFooter, PageSection } from '@patternfly/react-core';
 import { useNavigate } from 'react-router-dom';
 
-const NotFound: React.FunctionComponent = () => {
+const NotFound: React.FC = () => {
   function GoHomeBtn() {
     const navigate = useNavigate();
     function handleClick() {
@@ -24,4 +24,4 @@ const NotFound: React.FunctionComponent = () => {
   );
 };
 
-export { NotFound };
+export default NotFound;

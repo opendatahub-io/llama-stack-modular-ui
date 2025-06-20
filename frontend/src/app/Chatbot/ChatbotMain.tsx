@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
 import { generateId, getId } from '@app/utils/utils';
+import { CHAT_COMPLETION_URL } from '@app/services/llamaStackService';
+import { authService } from '@app/services/authService';
 import {
   Chatbot,
   ChatbotContent,
@@ -40,8 +42,8 @@ const ChatbotMain: React.FunctionComponent = () => {
   const [messages, setMessages] = React.useState<MessageProps[]>([initialBotMessage]);
   const [showPopover, setShowPopover] = React.useState(false);
   const [isShareChatbotOpen, setIsShareChatbotOpen] = React.useState(false);
-  const scrollToBottomRef = React.useRef<HTMLDivElement>(null);
-  const { models, loading, error, fetchLlamaModels } = useFetchLlamaModels();
+  const scrollToBottomRef = React.useRef<HTMLDivElement>(null!);
+  const { models, loading, error, isPermissionError, fetchLlamaModels } = useFetchLlamaModels();
   const [selectedModelId, setSelectedModelId] = React.useState<string | undefined>(undefined);
   const [isModelSelectOpen, setIsModelSelectOpen] = React.useState(false);
 
@@ -97,7 +99,7 @@ const ChatbotMain: React.FunctionComponent = () => {
     return <Spinner size="sm" />;
   }
 
-  if (error) {
+  if (error && !isPermissionError) {
     return <Alert variant="warning" isInline title="Cannot fetch models">{error}</Alert>;
   }
 
@@ -136,9 +138,16 @@ const ChatbotMain: React.FunctionComponent = () => {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const response = await fetch('/api/llama-stack/v1/inference/chat-completion', {
+      // Get authentication token
+      const token = authService.getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(CHAT_COMPLETION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           messages: updatedMessages.map((msg) => {
             const isAssistant = msg.role === 'bot';
@@ -281,16 +290,22 @@ const ChatbotMain: React.FunctionComponent = () => {
               <Title headingLevel="h1" size="xl" style={{ fontWeight: 'bold' }}>
                 Chatbot
               </Title>
-              <Label variant="outline" color="blue" style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}>
-                {selectedModelId}
-              </Label>
+              {isPermissionError ? (
+                <Label variant="outline" color="orange" style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}>
+                  Access Limited
+                </Label>
+              ) : (
+                <Label variant="outline" color="blue" style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}>
+                  {selectedModelId}
+                </Label>
+              )}
               <Select
                 variant="default"
                 aria-label="Select Model"
-                onOpenChange={setIsModelSelectOpen}
-                onSelect={(event, value) => handleModelSelect(event, value as string)}
+                onOpenChange={isPermissionError ? () => {} : setIsModelSelectOpen}
+                onSelect={isPermissionError ? () => {} : (event, value) => handleModelSelect(event, value as string)}
                 selected={selectedModelId}
-                isOpen={isModelSelectOpen}
+                isOpen={isPermissionError ? false : isModelSelectOpen}
                 style={{ marginLeft: 16, minWidth: 200 }}
                 toggle={{
                   toggleNode: (
@@ -298,8 +313,9 @@ const ChatbotMain: React.FunctionComponent = () => {
                       variant="secondary"
                       aria-label="Select Model Toggle"
                       style={{ minWidth: 200 }}
+                      isDisabled={isPermissionError}
                     >
-                      {selectedModelId || 'Select model'}
+                      {isPermissionError ? 'Models not accessible' : (selectedModelId || 'Select model')}
                     </Button>
                   )
                 }}
@@ -326,19 +342,26 @@ const ChatbotMain: React.FunctionComponent = () => {
         </ChatbotHeader>
         <ChatbotContent>
           <MessageBox position="bottom">
-            <ChatbotWelcomePrompt title="Hello, User!" description="Ask a question to chat with your model" />
+            {isPermissionError ? (
+              <ChatbotWelcomePrompt 
+                title="Hello, User!" 
+                description="You are authenticated but currently don't have permission to access AI models. Please contact your administrator to request access to use the chatbot functionality." 
+              />
+            ) : (
+              <ChatbotWelcomePrompt title="Hello, User!" description="Ask a question to chat with your model" />
+            )}
             <ChatbotMessages messageList={messages} scrollRef={scrollToBottomRef} />
           </MessageBox>
         </ChatbotContent>
         <ChatbotFooter>
           <MessageBar
             onSendMessage={(message) => {
-              if (typeof message === 'string') {
+              if (typeof message === 'string' && !isPermissionError) {
                 handleMessageSend(message);
               }
             }}
             hasAttachButton={false}
-            isSendButtonDisabled={isMessageSendButtonDisabled}
+            isSendButtonDisabled={isMessageSendButtonDisabled || isPermissionError}
             data-testid="chatbot-message-bar"
           />
           <ChatbotFootnote {...footnoteProps} />

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -8,8 +9,8 @@ import (
 	"path"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/opendatahub-io/llama-stack-modular-ui/internal/config"
-	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
+	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/config"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/helpers"
 )
 
 const (
@@ -27,6 +28,25 @@ type App struct {
 func NewApp(cfg config.EnvConfig, logger *slog.Logger) (*App, error) {
 	logger.Debug("Initializing app with config", slog.Any("config", cfg))
 
+	// Validate OAuth configuration
+	if cfg.OAuthEnabled {
+		if cfg.OAuthServerURL == "" {
+			return nil, fmt.Errorf("OAUTH_SERVER_URL is required when OAuth is enabled")
+		}
+		if cfg.OAuthClientID == "" {
+			return nil, fmt.Errorf("OAUTH_CLIENT_ID is required when OAuth is enabled")
+		}
+		if cfg.OAuthClientSecret == "" {
+			return nil, fmt.Errorf("OAUTH_CLIENT_SECRET is required when OAuth is enabled")
+		}
+		if cfg.OAuthRedirectURI == "" {
+			return nil, fmt.Errorf("OAUTH_REDIRECT_URI is required when OAuth is enabled")
+		}
+		logger.Info("OAuth configuration validated",
+			slog.String("oauth_server_url", cfg.OAuthServerURL),
+			slog.String("openshift_api_server_url", cfg.OpenShiftApiServerUrl))
+	}
+
 	app := &App{
 		config: cfg,
 		logger: logger,
@@ -41,29 +61,45 @@ func (app *App) Routes() http.Handler {
 	apiRouter.NotFound = http.HandlerFunc(app.notFoundResponse)
 	apiRouter.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
-	// HTTP client routes
+	// OAuth routes
+	apiRouter.POST("/auth/callback", app.HandleOAuthCallback)
+
+	// Config endpoint (not authenticated)
+	apiRouter.GET("/config", app.HandleConfig)
 
 	// App Router
 	appMux := http.NewServeMux()
 
-	// handler for api calls
-	appMux.Handle(ApiPathPrefix+"/", apiRouter)
+	// Register /api/v1/config as a public endpoint
+	appMux.HandleFunc(ApiPathPrefix+"/config", func(w http.ResponseWriter, r *http.Request) {
+		app.HandleConfig(w, r, nil)
+	})
 
-	// --- PROXY HANDLER FOR /api/llama-stack/* ---
-	appMux.HandleFunc("/api/llama-stack/", func(w http.ResponseWriter, r *http.Request) {
+	// Register /api/v1/auth/callback as a public endpoint
+	appMux.HandleFunc(ApiPathPrefix+"/auth/callback", func(w http.ResponseWriter, r *http.Request) {
+		app.HandleOAuthCallback(w, r, nil)
+	})
+
+	// All other /api/v1/* routes require auth
+	appMux.Handle(ApiPathPrefix+"/", app.RequireAuth(apiRouter))
+
+	// --- PROXY HANDLER FOR /llama-stack/* (UNPROTECTED) ---
+	appMux.HandleFunc("/llama-stack/", func(w http.ResponseWriter, r *http.Request) {
 		llamaStackURL := os.Getenv("LLAMA_STACK_URL")
 		if llamaStackURL == "" {
 			http.Error(w, "LLAMA_STACK_URL not set", http.StatusInternalServerError)
 			return
 		}
-		proxyPath := r.URL.Path[len("/api/llama-stack"):]
+
+		// Remove '/llama-stack' prefix and proxy the rest of the path
+		proxyPath := r.URL.Path[len("/llama-stack"):]
 		proxyURL := llamaStackURL + proxyPath
 		if r.URL.RawQuery != "" {
 			proxyURL += "?" + r.URL.RawQuery
 		}
 
 		// Log the proxied call
-		app.logger.Info("Proxying llama-stack call", slog.String("method", r.Method), slog.String("original_path", r.URL.Path), slog.String("proxy_url", proxyURL))
+		app.logger.Info("Proxying llama-stack call (unprotected)", slog.String("method", r.Method), slog.String("original_path", r.URL.Path), slog.String("proxy_url", proxyURL))
 
 		// Create new request
 		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
@@ -71,10 +107,12 @@ func (app *App) Routes() http.Handler {
 			http.Error(w, "Failed to create proxy request: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		// Copy headers
+
+		// Copy all headers
 		for k, v := range r.Header {
 			req.Header[k] = v
 		}
+
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
@@ -86,8 +124,10 @@ func (app *App) Routes() http.Handler {
 				app.logger.Error("Failed to close response body", slog.String("error", err.Error()))
 			}
 		}()
+
 		// Log the response status
 		app.logger.Info("Llama-stack response", slog.String("proxy_url", proxyURL), slog.Int("status_code", resp.StatusCode))
+
 		// Copy response headers
 		for k, v := range resp.Header {
 			w.Header()[k] = v
@@ -97,7 +137,7 @@ func (app *App) Routes() http.Handler {
 			app.logger.Error("Failed to copy response body", slog.String("error", err.Error()))
 		}
 	})
-	// --- END PROXY HANDLER ---
+	// --- END PROXY HANDLER FOR /llama-stack/* ---
 
 	//file server for the frontend file and SPA routes
 	staticDir := http.Dir(app.config.StaticAssetsDir)

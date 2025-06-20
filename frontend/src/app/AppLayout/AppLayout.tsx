@@ -1,9 +1,9 @@
-import * as React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
 import {
   Button,
   Masthead,
   MastheadBrand,
+  MastheadContent,
   MastheadLogo,
   MastheadMain,
   MastheadToggle,
@@ -14,10 +14,12 @@ import {
   Page,
   PageSidebar,
   PageSidebarBody,
-  SkipToContent,
+  SkipToContent
 } from '@patternfly/react-core';
-import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
 import { BarsIcon } from '@patternfly/react-icons';
+import * as React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { authService } from '../services/authService';
 
 interface IAppLayout {
   children: React.ReactNode;
@@ -25,6 +27,7 @@ interface IAppLayout {
 
 const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [isAuthenticated, setIsAuthenticated] = React.useState(authService.isAuthenticated());
   const masthead = (
     <Masthead>
       <MastheadMain>
@@ -83,6 +86,25 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
             </svg>
           </MastheadLogo>
         </MastheadBrand>
+        {isAuthenticated && (
+          <MastheadContent style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            marginLeft: 'auto',
+            paddingRight: '16px'
+          }}>
+            <Button 
+              variant="secondary" 
+              onClick={() => authService.logout()}
+              style={{ 
+                fontSize: '14px',
+                padding: '6px 12px'
+              }}
+            >
+              Logout
+            </Button>
+          </MastheadContent>
+        )}
       </MastheadMain>
     </Masthead>
   );
@@ -128,26 +150,26 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
 
   const pageId = 'primary-app-container';
 
+  React.useEffect(() => {
+    const checkAuth = () => setIsAuthenticated(authService.isAuthenticated());
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
+
   const PageSkipToContent = (
-    <SkipToContent
-      onClick={(event) => {
-        event.preventDefault();
-        const primaryContentContainer = document.getElementById(pageId);
-        primaryContentContainer?.focus();
-      }}
+    <SkipToContent onClick={(event) => {
+      event.preventDefault();
+      const primaryContentContainer = document.getElementById(pageId);
+      primaryContentContainer?.focus();
+    }}
       href={`#${pageId}`}
     >
       Skip to Content
     </SkipToContent>
   );
+
   return (
-    <Page
-      mainContainerId={pageId}
-      masthead={masthead}
-      sidebar={sidebarOpen && Sidebar}
-      skipToContent={PageSkipToContent}
-      isContentFilled
-    >
+    <Page mainContainerId={pageId} masthead={masthead} sidebar={sidebarOpen && Sidebar} skipToContent={PageSkipToContent} isContentFilled>
       {children}
     </Page>
   );
