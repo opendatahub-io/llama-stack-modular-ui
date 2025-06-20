@@ -38,7 +38,7 @@ const initialBotMessage: MessageProps = {
   avatar: botAvatar,
 };
 
-const ChatbotMain: React.FunctionComponent = () => {
+const ChatbotMain: React.FC = () => {
   const displayMode = ChatbotDisplayMode.fullscreen;
   const typingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isMessageSendButtonDisabled, setIsMessageSendButtonDisabled] = React.useState(false);
@@ -368,4 +368,4 @@ const ChatbotMain: React.FunctionComponent = () => {
   );
 }
 
-export { ChatbotMain };
+export default ChatbotMain;

@@ -7,9 +7,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/alexcreasy/modarch-quickstart/internal/config"
-	helper "github.com/alexcreasy/modarch-quickstart/internal/helpers"
 	"github.com/julienschmidt/httprouter"
+	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/config"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/helpers"
 )
 
 const (
@@ -41,13 +41,14 @@ func (app *App) Routes() http.Handler {
 	apiRouter.NotFound = http.HandlerFunc(app.notFoundResponse)
 	apiRouter.MethodNotAllowed = http.HandlerFunc(app.methodNotAllowedResponse)
 
-	// HTTP client routes
+	// OAuth routes
+	apiRouter.POST("/auth/callback", app.HandleOAuthCallback)
 
 	// App Router
 	appMux := http.NewServeMux()
 
 	// handler for api calls
-	appMux.Handle(ApiPathPrefix+"/", apiRouter)
+	appMux.Handle(ApiPathPrefix+"/", app.RequireAuth(apiRouter))
 
 	// --- PROXY HANDLER FOR /api/llama-stack/* ---
 	appMux.HandleFunc("/api/llama-stack/", func(w http.ResponseWriter, r *http.Request) {
