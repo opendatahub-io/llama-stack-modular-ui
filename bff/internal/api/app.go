@@ -9,6 +9,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/config"
+	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/constants"
 	helper "github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/helpers"
 )
 
@@ -44,10 +45,23 @@ func (app *App) Routes() http.Handler {
 	// OAuth routes
 	apiRouter.POST("/auth/callback", app.HandleOAuthCallback)
 
+	// Config endpoint (not authenticated)
+	apiRouter.GET("/config", app.HandleConfig)
+
 	// App Router
 	appMux := http.NewServeMux()
 
-	// handler for api calls
+	// Register /api/v1/config as a public endpoint
+	appMux.HandleFunc(ApiPathPrefix+"/config", func(w http.ResponseWriter, r *http.Request) {
+		app.HandleConfig(w, r, nil)
+	})
+
+	// Register /api/v1/auth/callback as a public endpoint
+	appMux.HandleFunc(ApiPathPrefix+"/auth/callback", func(w http.ResponseWriter, r *http.Request) {
+		app.HandleOAuthCallback(w, r, nil)
+	})
+
+	// All other /api/v1/* routes require auth
 	appMux.Handle(ApiPathPrefix+"/", app.RequireAuth(apiRouter))
 
 	// --- PROXY HANDLER FOR /api/llama-stack/* ---
@@ -72,9 +86,17 @@ func (app *App) Routes() http.Handler {
 			http.Error(w, "Failed to create proxy request: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		// Copy headers
+		// Copy headers except Authorization
 		for k, v := range r.Header {
+			if k == "Authorization" {
+				continue
+			}
 			req.Header[k] = v
+		}
+		// Forward the validated token from context
+		token, _ := r.Context().Value(constants.AuthTokenKey).(string)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
 		}
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -95,6 +117,46 @@ func (app *App) Routes() http.Handler {
 		}
 	})))
 	// --- END PROXY HANDLER ---
+
+	// --- PROXY HANDLER FOR /api/llama-stack/v1/models (unauthenticated) ---
+	appMux.HandleFunc("/api/llama-stack/v1/models", func(w http.ResponseWriter, r *http.Request) {
+		llamaStackURL := os.Getenv("LLAMA_STACK_URL")
+		if llamaStackURL == "" {
+			http.Error(w, "LLAMA_STACK_URL not set", http.StatusInternalServerError)
+			return
+		}
+		proxyURL := llamaStackURL + "/v1/models"
+		if r.URL.RawQuery != "" {
+			proxyURL += "?" + r.URL.RawQuery
+		}
+
+		app.logger.Info("Proxying llama-stack models (unauthenticated)", slog.String("method", r.Method), slog.String("proxy_url", proxyURL))
+
+		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
+		if err != nil {
+			http.Error(w, "Failed to create proxy request: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for k, v := range r.Header {
+			req.Header[k] = v
+		}
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		app.logger.Info("Llama-stack models response", slog.String("proxy_url", proxyURL), slog.Int("status_code", resp.StatusCode))
+		for k, v := range resp.Header {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(resp.StatusCode)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			app.logger.Error("Failed to copy response body", slog.String("error", err.Error()))
+		}
+	})
+	// --- END PROXY HANDLER FOR /api/llama-stack/v1/models ---
 
 	//file server for the frontend file and SPA routes
 	staticDir := http.Dir(app.config.StaticAssetsDir)

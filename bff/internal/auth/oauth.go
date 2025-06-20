@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -49,23 +51,29 @@ func ExtractToken(r *http.Request) (string, error) {
 
 // ValidateToken validates the token with OpenShift OAuth server
 func (h *OAuthHandler) ValidateToken(ctx context.Context, token string) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", h.config.OAuthServerURL+"/apis/user.openshift.io/v1/users/~", nil)
+	url := h.config.OAuthServerURL + "/apis/user.openshift.io/v1/users/~"
+	log.Printf("[BFF] Validating token against: %s", url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		log.Printf("[BFF] Error creating validation request: %v", err)
 		return fmt.Errorf("error creating request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token)
-
 	resp, err := h.client.Do(req)
 	if err != nil {
+		log.Printf("[BFF] Error validating token: %v", err)
 		return fmt.Errorf("error validating token: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("invalid token")
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[BFF] Token validation failed. Status: %d, Body: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("invalid token: %s", string(body))
 	}
 
+	log.Printf("[BFF] Token is valid.")
 	return nil
 }
 

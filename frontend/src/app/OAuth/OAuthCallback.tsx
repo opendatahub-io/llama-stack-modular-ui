@@ -30,7 +30,7 @@ const OAuthCallback: React.FC = () => {
 
       try {
         await authService.handleCallback(code);
-        navigate('/');
+        window.location.href = '/';
       } catch (err) {
         setError('Failed to authenticate');
         console.error('Authentication error:', err);

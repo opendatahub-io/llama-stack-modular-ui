@@ -79,7 +79,7 @@ func (app *App) RequireAuth(next http.Handler) http.Handler {
 
 		oauthHandler := auth.NewOAuthHandler(app.config)
 		if err := oauthHandler.ValidateToken(r.Context(), token); err != nil {
-			app.forbiddenResponse(w, r, "invalid or expired token")
+			app.forbiddenResponse(w, r, err.Error())
 			return
 		}
 

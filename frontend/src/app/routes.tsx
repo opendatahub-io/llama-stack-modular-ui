@@ -8,7 +8,20 @@ const NotFound = lazy(() => import('./NotFound/NotFound'));
 const OAuthCallback = lazy(() => import('./OAuth/OAuthCallback'));
 
 const AppRoutes = () => {
-  const isAuthenticated = authService.isAuthenticated();
+  const [isAuthenticated, setIsAuthenticated] = React.useState(authService.isAuthenticated());
+  const [loginError, setLoginError] = React.useState<string | null>(null);
+
+  // Listen for storage changes (e.g., after login in another tab)
+  React.useEffect(() => {
+    const checkAuth = () => setIsAuthenticated(authService.isAuthenticated());
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
+
+  // Check auth on mount and after login
+  React.useEffect(() => {
+    setIsAuthenticated(authService.isAuthenticated());
+  }, []);
 
   return (
     <Suspense
@@ -37,10 +50,21 @@ const AppRoutes = () => {
                 <h1>Welcome to Llama Stack</h1>
                 <button
                   className="pf-c-button pf-m-primary pf-u-mt-xl"
-                  onClick={() => authService.initiateLogin()}
+                  onClick={async () => {
+                    setLoginError(null);
+                    try {
+                      await authService.initiateLogin();
+                      setIsAuthenticated(authService.isAuthenticated());
+                    } catch (e: any) {
+                      setLoginError(e?.message || 'Login failed');
+                    }
+                  }}
                 >
                   Login with OpenShift
                 </button>
+                {loginError && (
+                  <div style={{ color: 'red', marginTop: 16 }}>{loginError}</div>
+                )}
               </div>
             ) : (
               <Navigate to="/" replace />
