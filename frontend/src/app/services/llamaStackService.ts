@@ -10,17 +10,17 @@ type ChatMessage = {
 };
 
 export const listModels = (): Promise<LlamaModel[]> => {
-  const url = '/api/llama-stack/models/list';
+  const url = '/api/llama-stack/v1/models';
   return axios
     .get(url)
-    .then((response) => response.data)
+    .then((response) => response.data.data)
     .catch((e) => {
       throw new Error(e.response.data.message);
     });
 };
 
 export const completeChat = (messages: ChatMessage[], model_id: string): Promise<string> => {
-  const url = '/api/llama-stack/chat/complete';
+  const url = '/api/llama-stack/v1/inference/chat-completion';
 
   const formattedMessages = messages.map((msg) => {
     if (msg.role === 'assistant' && !msg.stop_reason) {

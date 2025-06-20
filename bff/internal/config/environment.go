@@ -7,6 +7,13 @@ type EnvConfig struct {
 	StaticAssetsDir string
 	LogLevel        slog.Level
 	AllowedOrigins  []string
+
+	// OAuth Configuration
+	OAuthEnabled      bool
+	OAuthClientID     string
+	OAuthClientSecret string
+	OAuthRedirectURI  string
+	OAuthServerURL    string
 }
 
 //MockK8Client    bool
