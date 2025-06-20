@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
 	"io"
 	"log/slog"
 	"net/http"
 	"slices"
+
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
 )
 
 func GetContextLoggerFromReq(r *http.Request) *slog.Logger {

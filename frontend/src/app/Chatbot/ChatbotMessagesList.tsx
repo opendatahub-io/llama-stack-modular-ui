@@ -6,7 +6,10 @@ type ChatbotMessagesListProps = {
   scrollRef: React.RefObject<HTMLDivElement | null>;
 };
 
-const ChatbotMessagesList: React.FC<ChatbotMessagesListProps> = ({ messageList, scrollRef }) => (
+const ChatbotMessagesList: React.FC<ChatbotMessagesListProps> = ({
+  messageList,
+  scrollRef,
+}) => (
   <>
     {messageList.map((message, index) => (
       <React.Fragment key={message.id}>
@@ -14,10 +17,9 @@ const ChatbotMessagesList: React.FC<ChatbotMessagesListProps> = ({ messageList, 
         {index === messageList.length - 1 && <div ref={scrollRef} />}
       </React.Fragment>
     ))}
-    {messageList.length === 0 && <div ref={scrollRef} />}
   </>
 );
 
-const ChatbotMessages = React.memo(ChatbotMessagesList);
+const ChatbotMessages = React.memo(ChatbotMessagesList); 
 
 export { ChatbotMessages };

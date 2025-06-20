@@ -1,5 +1,4 @@
-import * as React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
 import {
   Button,
   Masthead,
@@ -14,11 +13,12 @@ import {
   Page,
   PageSidebar,
   PageSidebarBody,
-  SkipToContent,
+  SkipToContent
 } from '@patternfly/react-core';
-import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
 import { BarsIcon } from '@patternfly/react-icons';
 import logo from '../bgimages/bot_avatar.svg';
+import * as React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 
 interface IAppLayout {
   children: React.ReactNode;
@@ -89,25 +89,19 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const pageId = 'primary-app-container';
 
   const PageSkipToContent = (
-    <SkipToContent
-      onClick={(event) => {
-        event.preventDefault();
-        const primaryContentContainer = document.getElementById(pageId);
-        primaryContentContainer?.focus();
-      }}
+    <SkipToContent onClick={(event) => {
+      event.preventDefault();
+      const primaryContentContainer = document.getElementById(pageId);
+      primaryContentContainer?.focus();
+    }}
       href={`#${pageId}`}
     >
       Skip to Content
     </SkipToContent>
   );
+
   return (
-    <Page
-      mainContainerId={pageId}
-      masthead={masthead}
-      sidebar={sidebarOpen && Sidebar}
-      skipToContent={PageSkipToContent}
-      isContentFilled
-    >
+    <Page mainContainerId={pageId} masthead={masthead} sidebar={sidebarOpen && Sidebar} skipToContent={PageSkipToContent} isContentFilled>
       {children}
     </Page>
   );
