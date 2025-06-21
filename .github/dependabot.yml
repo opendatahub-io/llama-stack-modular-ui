@@ -6,9 +6,11 @@
 version: 1
 updates:
   - package-ecosystem: "gomod"
-    directories: 
-      - "/"
-      - "/bff/"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
+    directory: "/bff/"
     schedule:
       interval: "weekly"
   - package-ecosystem: "github-actions"
