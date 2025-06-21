@@ -31,15 +31,19 @@ jobs:
         working-directory: frontend
         run: npm install
 
+      - name: Run lint
+        working-directory: frontend
+        run: npm run lint
+
       - name: Run tests
         working-directory: frontend
         run: npm run test
 
-      - name: Clean
+      - name: Run clean
         working-directory: frontend
         run: npm run clean
 
-      - name: Build
+      - name: Run build
         working-directory: frontend
         run: npm run build
 
