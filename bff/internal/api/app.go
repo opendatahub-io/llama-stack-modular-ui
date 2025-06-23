@@ -98,6 +98,8 @@ func (app *App) Routes() http.Handler {
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
+		// Log the outgoing Authorization header
+		app.logger.Info("Proxy outgoing Authorization header", slog.String("auth_header", req.Header.Get("Authorization")))
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
@@ -117,46 +119,6 @@ func (app *App) Routes() http.Handler {
 		}
 	})))
 	// --- END PROXY HANDLER ---
-
-	// --- PROXY HANDLER FOR /api/llama-stack/v1/models (unauthenticated) ---
-	appMux.HandleFunc("/api/llama-stack/v1/models", func(w http.ResponseWriter, r *http.Request) {
-		llamaStackURL := os.Getenv("LLAMA_STACK_URL")
-		if llamaStackURL == "" {
-			http.Error(w, "LLAMA_STACK_URL not set", http.StatusInternalServerError)
-			return
-		}
-		proxyURL := llamaStackURL + "/v1/models"
-		if r.URL.RawQuery != "" {
-			proxyURL += "?" + r.URL.RawQuery
-		}
-
-		app.logger.Info("Proxying llama-stack models (unauthenticated)", slog.String("method", r.Method), slog.String("proxy_url", proxyURL))
-
-		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
-		if err != nil {
-			http.Error(w, "Failed to create proxy request: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		for k, v := range r.Header {
-			req.Header[k] = v
-		}
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
-			return
-		}
-		defer resp.Body.Close()
-		app.logger.Info("Llama-stack models response", slog.String("proxy_url", proxyURL), slog.Int("status_code", resp.StatusCode))
-		for k, v := range resp.Header {
-			w.Header()[k] = v
-		}
-		w.WriteHeader(resp.StatusCode)
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			app.logger.Error("Failed to copy response body", slog.String("error", err.Error()))
-		}
-	})
-	// --- END PROXY HANDLER FOR /api/llama-stack/v1/models ---
 
 	//file server for the frontend file and SPA routes
 	staticDir := http.Dir(app.config.StaticAssetsDir)
