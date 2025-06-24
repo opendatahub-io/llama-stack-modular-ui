@@ -64,13 +64,20 @@ func (c *HTTPClient) GET(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+
+	defer func() {
+		if closeErr := response.Body.Close(); closeErr != nil {
+			c.logger.Printf("warning: failed to close response body: %v", closeErr)
+		}
+	}()
 
 	body, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, body)
+
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
+
 	return body, nil
 }
 
@@ -92,10 +99,16 @@ func (c *HTTPClient) POST(url string, body io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+
+	defer func() {
+		if closeErr := response.Body.Close(); closeErr != nil {
+			c.logger.Printf("warning: failed to close response body: %v", closeErr)
+		}
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, responseBody)
+
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -103,7 +116,7 @@ func (c *HTTPClient) POST(url string, body io.Reader) ([]byte, error) {
 	if response.StatusCode != http.StatusCreated {
 		var errorResponse ErrorResponse
 		if err := json.Unmarshal(responseBody, &errorResponse); err != nil {
-			return nil, fmt.Errorf("error unmarshalling error response: %w", err)
+			return nil, fmt.Errorf("error parsing error response: %w", err)
 		}
 		httpError := &HTTPError{
 			StatusCode:    response.StatusCode,
@@ -112,8 +125,8 @@ func (c *HTTPClient) POST(url string, body io.Reader) ([]byte, error) {
 		//Sometimes the code comes empty from model registry API
 		//also not all error codes are correctly implemented
 		//see https://github.com/kubeflow/model-registry/issues/95
-		if httpError.ErrorResponse.Code == "" {
-			httpError.ErrorResponse.Code = strconv.Itoa(response.StatusCode)
+		if httpError.Code == "" {
+			httpError.Code = strconv.Itoa(response.StatusCode)
 		}
 		return nil, httpError
 	}
@@ -129,7 +142,6 @@ func (c *HTTPClient) PATCH(url string, body io.Reader) ([]byte, error) {
 	}
 
 	requestId := uuid.NewString()
-
 	req.Header.Set("Content-Type", "application/json")
 
 	logUpstreamReq(c.logger, requestId, req)
@@ -138,10 +150,16 @@ func (c *HTTPClient) PATCH(url string, body io.Reader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+
+	defer func() {
+		if closeErr := response.Body.Close(); closeErr != nil {
+			c.logger.Printf("warning: failed to close response body: %v", closeErr)
+		}
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, responseBody)
+
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -149,7 +167,7 @@ func (c *HTTPClient) PATCH(url string, body io.Reader) ([]byte, error) {
 	if response.StatusCode != http.StatusOK {
 		var errorResponse ErrorResponse
 		if err := json.Unmarshal(responseBody, &errorResponse); err != nil {
-			return nil, fmt.Errorf("error unmarshalling error response: %w", err)
+			return nil, fmt.Errorf("error parsing error response: %w", err) // updated wording
 		}
 		httpError := &HTTPError{
 			StatusCode:    response.StatusCode,
@@ -158,11 +176,12 @@ func (c *HTTPClient) PATCH(url string, body io.Reader) ([]byte, error) {
 		//Sometimes the code comes empty from model registry API
 		//also not all error codes are correctly implemented
 		//see https://github.com/kubeflow/model-registry/issues/95
-		if httpError.ErrorResponse.Code == "" {
-			httpError.ErrorResponse.Code = strconv.Itoa(response.StatusCode)
+		if httpError.Code == "" {
+			httpError.Code = strconv.Itoa(response.StatusCode)
 		}
 		return nil, httpError
 	}
+
 	return responseBody, nil
 }
 
