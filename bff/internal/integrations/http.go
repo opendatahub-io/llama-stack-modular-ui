@@ -67,9 +67,9 @@ func (c *HTTPClient) GET(url string) ([]byte, error) {
 
 	defer func() {
 		if closeErr := response.Body.Close(); closeErr != nil {
-			c.logger.Printf("warning: failed to close response body: %v", closeErr)
+			c.logger.Warn("failed to close response body", "error", closeErr)
 		}
-	}()
+	}()	
 
 	body, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, body)
@@ -102,9 +102,9 @@ func (c *HTTPClient) POST(url string, body io.Reader) ([]byte, error) {
 
 	defer func() {
 		if closeErr := response.Body.Close(); closeErr != nil {
-			c.logger.Printf("warning: failed to close response body: %v", closeErr)
+			c.logger.Warn("failed to close response body", "error", closeErr)
 		}
-	}()
+	}()	
 
 	responseBody, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, responseBody)
@@ -153,9 +153,9 @@ func (c *HTTPClient) PATCH(url string, body io.Reader) ([]byte, error) {
 
 	defer func() {
 		if closeErr := response.Body.Close(); closeErr != nil {
-			c.logger.Printf("warning: failed to close response body: %v", closeErr)
+			c.logger.Warn("failed to close response body", "error", closeErr)
 		}
-	}()
+	}()	
 
 	responseBody, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, responseBody)
