@@ -3,13 +3,15 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/alexcreasy/modarch-quickstart/internal/constants"
-	helper "github.com/alexcreasy/modarch-quickstart/internal/helpers"
-	"github.com/google/uuid"
-	"github.com/rs/cors"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+
+	"github.com/google/uuid"
+	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/auth"
+	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/constants"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/helpers"
+	"github.com/rs/cors"
 )
 
 func (app *App) RecoverPanic(next http.Handler) http.Handler {
@@ -58,6 +60,31 @@ func (app *App) EnableTelemetry(next http.Handler) http.Handler {
 
 			traceLogger.Debug("Incoming HTTP request", slog.Any("request", helper.RequestLogValuer{Request: r}))
 		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (app *App) RequireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !app.config.OAuthEnabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		token, err := auth.ExtractToken(r)
+		if err != nil {
+			app.forbiddenResponse(w, r, "authentication required")
+			return
+		}
+
+		oauthHandler := auth.NewOAuthHandler(app.config)
+		if err := oauthHandler.ValidateToken(r.Context(), token); err != nil {
+			app.forbiddenResponse(w, r, err.Error())
+			return
+		}
+
+		// Store token in context for downstream use
+		ctx := context.WithValue(r.Context(), constants.AuthTokenKey, token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

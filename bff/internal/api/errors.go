@@ -3,9 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/alexcreasy/modarch-quickstart/internal/integrations"
 	"net/http"
 	"strconv"
+
+	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/integrations"
 )
 
 type HTTPError struct {
