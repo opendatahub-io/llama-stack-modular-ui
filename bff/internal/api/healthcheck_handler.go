@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/alexcreasy/modarch-quickstart/internal/models"
 	"github.com/julienschmidt/httprouter"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/models"
 	"net/http"
 )
 

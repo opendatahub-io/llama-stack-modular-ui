@@ -3,9 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/alexcreasy/modarch-quickstart/internal/constants"
-	helper "github.com/alexcreasy/modarch-quickstart/internal/helpers"
 	"github.com/google/uuid"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 	"github.com/rs/cors"
 	"log/slog"
 	"net/http"

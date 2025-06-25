@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/alexcreasy/modarch-quickstart/internal/constants"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
 	"io"
 	"log/slog"
 	"net/http"
@@ -71,13 +71,15 @@ func CloneBody(r *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read request body: %w", err)
 	}
 
+	logger := GetContextLoggerFromReq(r)
+
 	readerCopy := io.NopCloser(bytes.NewBuffer(buf))
 	readerOriginal := io.NopCloser(bytes.NewBuffer(buf))
 	r.Body = readerOriginal
 
 	defer func() {
 		if closeErr := readerCopy.Close(); closeErr != nil {
-			log.Printf("warning: failed to close readerCopy: %v", closeErr)
+			logger.Error("failed to close readerCopy", slog.String("error", closeErr.Error()))
 		}
 	}()
 
