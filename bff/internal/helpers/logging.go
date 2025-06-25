@@ -65,15 +65,28 @@ func CloneBody(r *http.Request) ([]byte, error) {
 	if r.Body == nil {
 		return nil, fmt.Errorf("no body provided")
 	}
-	buf, _ := io.ReadAll(r.Body)
+
+	buf, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body: %w", err)
+	}
+
 	readerCopy := io.NopCloser(bytes.NewBuffer(buf))
 	readerOriginal := io.NopCloser(bytes.NewBuffer(buf))
 	r.Body = readerOriginal
 
-	defer readerCopy.Close()
-	cloneBody, err := io.ReadAll(readerCopy)
+	defer func() {
+		if closeErr := readerCopy.Close(); closeErr != nil {
+			log.Printf("warning: failed to close readerCopy: %v", closeErr)
+		}
+	}()
 
-	return cloneBody, err
+	cloneBody, err := io.ReadAll(readerCopy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read cloned body: %w", err)
+	}
+
+	return cloneBody, nil
 }
 
 type RequestLogValuer struct {

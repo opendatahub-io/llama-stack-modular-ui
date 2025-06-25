@@ -31,6 +31,8 @@ func (app *App) LogError(r *http.Request, err error) {
 	app.logger.Error(err.Error(), "method", method, "uri", uri)
 }
 
+//TODO: remove nolint comment below when we use this method
+//nolint:unused
 func (app *App) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	httpError := &integrations.HTTPError{
 		StatusCode: http.StatusBadRequest,
@@ -42,6 +44,8 @@ func (app *App) badRequestResponse(w http.ResponseWriter, r *http.Request, err e
 	app.errorResponse(w, r, httpError)
 }
 
+//TODO: remove nolint comment below when we use this method
+//nolint:unused
 func (app *App) forbiddenResponse(w http.ResponseWriter, r *http.Request, message string) {
 	httpError := &integrations.HTTPError{
 		StatusCode: http.StatusForbidden,
