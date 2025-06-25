@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	helper "github.com/alexcreasy/modarch-quickstart/internal/helpers"
 	"github.com/google/uuid"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 	"io"
 	"log/slog"
 	"net/http"
@@ -69,7 +69,7 @@ func (c *HTTPClient) GET(url string) ([]byte, error) {
 		if closeErr := response.Body.Close(); closeErr != nil {
 			c.logger.Warn("failed to close response body", "error", closeErr)
 		}
-	}()	
+	}()
 
 	body, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, body)
@@ -104,7 +104,7 @@ func (c *HTTPClient) POST(url string, body io.Reader) ([]byte, error) {
 		if closeErr := response.Body.Close(); closeErr != nil {
 			c.logger.Warn("failed to close response body", "error", closeErr)
 		}
-	}()	
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, responseBody)
@@ -155,7 +155,7 @@ func (c *HTTPClient) PATCH(url string, body io.Reader) ([]byte, error) {
 		if closeErr := response.Body.Close(); closeErr != nil {
 			c.logger.Warn("failed to close response body", "error", closeErr)
 		}
-	}()	
+	}()
 
 	responseBody, err := io.ReadAll(response.Body)
 	logUpstreamResp(c.logger, requestId, response, responseBody)

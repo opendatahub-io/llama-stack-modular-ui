@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alexcreasy/modarch-quickstart/internal/api"
-	"github.com/alexcreasy/modarch-quickstart/internal/config"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/api"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/config"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package api
 
 import (
-	"github.com/alexcreasy/modarch-quickstart/internal/config"
-	helper "github.com/alexcreasy/modarch-quickstart/internal/helpers"
 	"github.com/julienschmidt/httprouter"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/config"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 	"log/slog"
 	"net/http"
 	"path"

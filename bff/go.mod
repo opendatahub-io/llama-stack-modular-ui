@@ -1,4 +1,4 @@
-module github.com/alexcreasy/modarch-quickstart
+module github.com/opendatahub-io/llama-stack-modular-ui
 
 go 1.23.5
 
