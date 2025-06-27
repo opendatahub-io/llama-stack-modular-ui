@@ -1,12 +1,15 @@
 package api
 
 import (
+	"io"
+	"log/slog"
+	"net/http"
+	"os"
+	"path"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/config"
 	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
-	"log/slog"
-	"net/http"
-	"path"
 )
 
 const (
@@ -45,6 +48,56 @@ func (app *App) Routes() http.Handler {
 
 	// handler for api calls
 	appMux.Handle(ApiPathPrefix+"/", apiRouter)
+
+	// --- PROXY HANDLER FOR /api/llama-stack/* ---
+	appMux.HandleFunc("/api/llama-stack/", func(w http.ResponseWriter, r *http.Request) {
+		llamaStackURL := os.Getenv("LLAMA_STACK_URL")
+		if llamaStackURL == "" {
+			http.Error(w, "LLAMA_STACK_URL not set", http.StatusInternalServerError)
+			return
+		}
+		proxyPath := r.URL.Path[len("/api/llama-stack"):]
+		proxyURL := llamaStackURL + proxyPath
+		if r.URL.RawQuery != "" {
+			proxyURL += "?" + r.URL.RawQuery
+		}
+
+		// Log the proxied call
+		app.logger.Info("Proxying llama-stack call", slog.String("method", r.Method), slog.String("original_path", r.URL.Path), slog.String("proxy_url", proxyURL))
+
+		// Create new request
+		req, err := http.NewRequest(r.Method, proxyURL, r.Body)
+		if err != nil {
+			http.Error(w, "Failed to create proxy request: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		// Copy headers
+		for k, v := range r.Header {
+			req.Header[k] = v
+		}
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, "Proxy error: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				app.logger.Error("Failed to close response body", slog.String("error", err.Error()))
+			}
+		}()
+		// Log the response status
+		app.logger.Info("Llama-stack response", slog.String("proxy_url", proxyURL), slog.Int("status_code", resp.StatusCode))
+		// Copy response headers
+		for k, v := range resp.Header {
+			w.Header()[k] = v
+		}
+		w.WriteHeader(resp.StatusCode)
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			app.logger.Error("Failed to copy response body", slog.String("error", err.Error()))
+		}
+	})
+	// --- END PROXY HANDLER ---
 
 	//file server for the frontend file and SPA routes
 	staticDir := http.Dir(app.config.StaticAssetsDir)
