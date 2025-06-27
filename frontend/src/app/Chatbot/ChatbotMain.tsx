@@ -324,7 +324,7 @@ const ChatbotMain: React.FunctionComponent = () => {
     setSelectedSourceSettings(settings);
     setIsSourceSettingsOpen(!isSourceSettingsOpen);
 
-    if (settings && settings.chunkOverlap && settings.maxChunkLength) {
+    if (settings?.chunkOverlap && settings?.maxChunkLength) {
       showAlert();
     } else {
       setSelectedSource([]);
