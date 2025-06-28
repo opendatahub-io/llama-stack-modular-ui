@@ -34,7 +34,7 @@ const ChatbotSourceUploadPanel: React.FC<ChatbotSourceUploadPanelProps> = ({
       {alert}
     </AlertGroup>
     <DrawerPanelBody>
-      <Title headingLevel="h5" style={{ fontWeight: 'bold', marginBottom: 'var(--pf-global--spacer--2xl)' }}>
+      <Title headingLevel="h5" style={{ fontWeight: 'bold', marginBottom: 'var(--pf-t--global--spacer--2xl)' }}>
         Sources
       </Title>
       <MultipleFileUpload
