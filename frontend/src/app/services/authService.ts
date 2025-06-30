@@ -10,10 +10,13 @@ export type OAuthConfig = {
 class AuthService {
   private token: string | null = null;
   private config?: OAuthConfig;
+  private isDevelopment = process.env.NODE_ENV === 'development';
 
   constructor() {
     this.token = localStorage.getItem('auth_token');
-    console.log('[Frontend] AuthService initialized. Token:', this.token);
+    if (this.isDevelopment) {
+      console.log('[Frontend] AuthService initialized. Token present:', !!this.token);
+    }
   }
 
   async loadConfig(): Promise<OAuthConfig> {
@@ -31,34 +34,52 @@ class AuthService {
 
   isAuthenticated(): boolean {
     const result = !!this.token;
-    console.log('[Frontend] isAuthenticated:', result, 'Token:', this.token);
+    if (this.isDevelopment) {
+      console.log('[Frontend] isAuthenticated:', result);
+    }
     return result;
   }
 
   getToken(): string | null {
-    console.log('[Frontend] getToken:', this.token);
+    if (this.isDevelopment) {
+      console.log('[Frontend] getToken called');
+    }
     return this.token;
   }
 
   setToken(token: string) {
     this.token = token;
     localStorage.setItem('auth_token', token);
-    console.log('[Frontend] setToken:', token);
+    if (this.isDevelopment) {
+      console.log('[Frontend] setToken: token stored');
+    }
   }
 
   clearToken() {
     this.token = null;
     localStorage.removeItem('auth_token');
-    console.log('[Frontend] clearToken');
+    if (this.isDevelopment) {
+      console.log('[Frontend] clearToken');
+    }
   }
 
   // Handle OAuth callback
-  async handleCallback(code: string): Promise<void> {
+  async handleCallback(code: string, state?: string): Promise<void> {
     try {
       console.log('[Frontend] handleCallback: exchanging code for token', code);
-      const response = await axios.post('/api/v1/auth/callback', { code });
+      
+      if (!state) {
+        throw new Error('OAuth state parameter is missing');
+      }
+      
+      const response = await axios.post('/api/v1/auth/callback', { 
+        code, 
+        state 
+      });
       const { access_token } = response.data;
-      console.log('[Frontend] Received access_token:', access_token);
+      if (this.isDevelopment) {
+        console.log('[Frontend] OAuth token exchange successful');
+      }
       this.setToken(access_token);
     } catch (error) {
       console.error('[Frontend] Error handling OAuth callback:', error);
@@ -82,7 +103,14 @@ class AuthService {
       oauthServerUrl: oauthServerUrl
     });
     
-    const state = Math.random().toString(36).substring(7);
+    // Get state parameter from backend
+    const stateResponse = await axios.get('/api/v1/auth/state');
+    const { state } = stateResponse.data;
+    
+    if (!state) {
+      throw new Error('Failed to get OAuth state parameter');
+    }
+    
     localStorage.setItem('oauth_state', state);
     const authUrl = `${oauthServerUrl}/oauth/authorize?` +
       `response_type=code&` +
@@ -93,6 +121,8 @@ class AuthService {
     console.log('[Frontend] Redirecting to OAuth login:', authUrl);
     window.location.href = authUrl;
   }
+
+
 
   // Logout
   logout() {

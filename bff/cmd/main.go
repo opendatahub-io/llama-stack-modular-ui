@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/api"
-	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/config"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/api"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/config"
 )
 
 func main() {
@@ -23,6 +23,9 @@ func main() {
 	flag.TextVar(&cfg.LogLevel, "log-level", parseLevel(getEnvAsString("LOG_LEVEL", "DEBUG")), "Sets server log level, possible values: error, warn, info, debug")
 	flag.Func("allowed-origins", "Sets allowed origins for CORS purposes, accepts a comma separated list of origins or * to allow all, default none", newOriginParser(&cfg.AllowedOrigins, getEnvAsString("ALLOWED_ORIGINS", "")))
 
+	// Llama Stack configuration
+	flag.StringVar(&cfg.LlamaStackURL, "llama-stack-url", getEnvAsString("LLAMA_STACK_URL", ""), "Llama Stack server URL for proxying requests")
+
 	// OAuth configuration
 	flag.BoolVar(&cfg.OAuthEnabled, "oauth-enabled", getEnvAsBool("OAUTH_ENABLED", false), "Enable OAuth authentication")
 	flag.StringVar(&cfg.OAuthClientID, "oauth-client-id", getEnvAsString("OAUTH_CLIENT_ID", ""), "OAuth client ID")
@@ -30,6 +33,7 @@ func main() {
 	flag.StringVar(&cfg.OAuthRedirectURI, "oauth-redirect-uri", getEnvAsString("OAUTH_REDIRECT_URI", ""), "OAuth redirect URI")
 	flag.StringVar(&cfg.OAuthServerURL, "oauth-server-url", getEnvAsString("OAUTH_SERVER_URL", ""), "OAuth server URL")
 	flag.StringVar(&cfg.OpenShiftApiServerUrl, "openshift-api-server-url", getEnvAsString("OPENSHIFT_API_SERVER_URL", "https://kubernetes.default.svc.cluster.local"), "OpenShift API server URL for token validation")
+	flag.StringVar(&cfg.OAuthUserInfoEndpoint, "oauth-user-info-endpoint", getEnvAsString("OAUTH_USER_INFO_ENDPOINT", ""), "OAuth user info endpoint URL for token validation (optional, defaults to OpenShift API server + /apis/user.openshift.io/v1/users/~)")
 
 	flag.Parse()
 

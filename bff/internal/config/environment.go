@@ -8,6 +8,9 @@ type EnvConfig struct {
 	LogLevel        slog.Level
 	AllowedOrigins  []string
 
+	// Llama Stack Configuration
+	LlamaStackURL string
+
 	// OAuth Configuration
 	OAuthEnabled          bool
 	OAuthClientID         string
@@ -15,6 +18,7 @@ type EnvConfig struct {
 	OAuthRedirectURI      string
 	OAuthServerURL        string
 	OpenShiftApiServerUrl string
+	OAuthUserInfoEndpoint string
 }
 
 //MockK8Client    bool

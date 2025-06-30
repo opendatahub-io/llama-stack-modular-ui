@@ -1,8 +1,51 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
-import { generateId, getId } from '@app/utils/utils';
+import { getId } from '@app/utils/utils';
 import { CHAT_COMPLETION_URL } from '@app/services/llamaStackService';
 import { authService } from '@app/services/authService';
+
+// TypeScript interfaces for stream event processing
+interface StreamEventDelta {
+  text?: string;
+}
+
+interface StreamEvent {
+  event_type: 'progress' | 'complete' | 'error';
+  delta?: StreamEventDelta;
+  message?: string;
+  error?: string;
+}
+
+interface StreamEventWrapper {
+  event?: StreamEvent;
+}
+
+// Type guards for runtime validation
+const isValidStreamEventWrapper = (obj: unknown): obj is StreamEventWrapper => {
+  return typeof obj === 'object' && obj !== null;
+};
+
+const isValidStreamEvent = (event: unknown): event is StreamEvent => {
+  if (typeof event !== 'object' || event === null) {
+    return false;
+  }
+  
+  const e = event as Record<string, unknown>;
+  return typeof e.event_type === 'string' && 
+         ['progress', 'complete', 'error'].includes(e.event_type);
+};
+
+const isProgressEvent = (event: StreamEvent): event is StreamEvent & { event_type: 'progress' } => {
+  return event.event_type === 'progress';
+};
+
+const isCompleteEvent = (event: StreamEvent): event is StreamEvent & { event_type: 'complete' } => {
+  return event.event_type === 'complete';
+};
+
+const isErrorEvent = (event: StreamEvent): event is StreamEvent & { event_type: 'error' } => {
+  return event.event_type === 'error';
+};
 import {
   Chatbot,
   ChatbotContent,
@@ -19,7 +62,7 @@ import {
   MessageProps
 } from '@patternfly/chatbot';
 import '@patternfly/chatbot/dist/css/main.css';
-import { Alert, Button, Label, Select, SelectOption, Spinner, Title } from '@patternfly/react-core';
+import { Alert, AlertGroup, AlertVariant, Button, Label, Select, SelectOption, Spinner, Title } from '@patternfly/react-core';
 import { ShareSquareIcon } from '@patternfly/react-icons';
 import * as React from 'react';
 import botAvatar from '../bgimages/bot_avatar.svg';
@@ -46,6 +89,9 @@ const ChatbotMain: React.FunctionComponent = () => {
   const { models, loading, error, isPermissionError, fetchLlamaModels } = useFetchLlamaModels();
   const [selectedModelId, setSelectedModelId] = React.useState<string | undefined>(undefined);
   const [isModelSelectOpen, setIsModelSelectOpen] = React.useState(false);
+  
+  // State for user feedback notifications
+  const [alerts, setAlerts] = React.useState<Array<{ id: string; title: string; variant: AlertVariant }>>([]);
 
   const footnoteProps = {
     label: 'Always review AI generated content prior to use',
@@ -103,9 +149,27 @@ const ChatbotMain: React.FunctionComponent = () => {
     return <Alert variant="warning" isInline title="Cannot fetch models">{error}</Alert>;
   }
 
+  // Helper function to show user notifications
+  const showAlert = (title: string, variant: AlertVariant = AlertVariant.warning) => {
+    const id = `alert-${Date.now()}`;
+    setAlerts(prev => [...prev, { id, title, variant }]);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      setAlerts(prev => prev.filter(alert => alert.id !== id));
+    }, 5000);
+  };
+
   const handleMessageSend = async (userInput: string) => {
-    if (!userInput || !selectedModelId) {
-      console.log('No user input or model ID ', userInput, selectedModelId);
+    // Validate user input
+    if (!userInput || userInput.trim().length === 0) {
+      showAlert('Please enter a message before sending.', AlertVariant.info);
+      return;
+    }
+
+    // Validate model selection
+    if (!selectedModelId) {
+      showAlert('Please select a model before sending your message.', AlertVariant.warning);
       return;
     }
 
@@ -122,7 +186,7 @@ const ChatbotMain: React.FunctionComponent = () => {
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
 
-    const assistantMessageId = generateId();
+    const assistantMessageId = getId();
     setMessages((prev) => [
       ...prev,
       {
@@ -162,7 +226,6 @@ const ChatbotMain: React.FunctionComponent = () => {
         }),
       });
 
-      clearTimeout(timeoutId);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('No response body');
 
@@ -198,28 +261,55 @@ const ChatbotMain: React.FunctionComponent = () => {
       };
 
 
-      const processStreamEvent = (jsonStr: string) => {
+      const processStreamEvent = (jsonStr: string): void => {
         try {
-          const parsed = JSON.parse(jsonStr);
-          if (!parsed || typeof parsed !== 'object') {
-            console.warn('Invalid stream event format:', jsonStr);
+          // Parse JSON with type safety
+          const parsed: unknown = JSON.parse(jsonStr);
+          
+          // Validate top-level structure
+          if (!isValidStreamEventWrapper(parsed)) {
+            console.warn('[ChatBot] Invalid stream event wrapper structure, skipping event');
             return;
           }
-          const event = parsed.event;
-          if (!event) {
-            console.warn('Received event without event field:', parsed);
+          
+          // Check for event field
+          if (!parsed.event) {
+            console.warn('[ChatBot] Stream event missing event field, skipping');
             return;
           }
-          if (event?.event_type === 'progress' && event.delta?.text) {
-            const deltaText = event.delta?.text || '';
-            typingQueue.push(...deltaText.split(''));
-            startTyping();
-          } else if (event?.event_type === 'complete') {
+          
+          // Validate event structure
+          if (!isValidStreamEvent(parsed.event)) {
+            console.warn('[ChatBot] Invalid stream event structure, skipping event');
+            return;
+          }
+          
+          const event: StreamEvent = parsed.event;
+          
+          // Process different event types with proper validation
+          if (isProgressEvent(event)) {
+            // Handle progress events
+            if (event.delta?.text && typeof event.delta.text === 'string') {
+              const deltaText = event.delta.text;
+              if (deltaText.length > 0) {
+                typingQueue.push(...deltaText.split(''));
+                startTyping();
+              }
+            } else {
+              // Progress event without text is valid but no-op
+              console.debug('[ChatBot] Progress event received without text content');
+            }
+          } else if (isCompleteEvent(event)) {
+            // Handle completion events
             streamEnded = true;
-            const finalize = () => {
+            console.debug('[ChatBot] Stream completion event received');
+            
+            const finalize = (): void => {
               if (typingQueue.length > 0) {
+                // Wait for typing animation to complete
                 setTimeout(finalize, 20);
               } else {
+                // Remove typing indicator and finalize message
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMessageId
@@ -230,9 +320,40 @@ const ChatbotMain: React.FunctionComponent = () => {
               }
             };
             finalize();
+          } else if (isErrorEvent(event)) {
+            // Handle error events from stream
+            const errorMessage = event.error || event.message || 'Unknown stream error';
+            console.error('[ChatBot] Stream error event received:', errorMessage);
+            
+            // Display error to user
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? { 
+                      ...msg, 
+                      content: `Error during response generation: ${errorMessage}` 
+                    }
+                  : msg
+              )
+            );
+            streamEnded = true;
+          } else {
+            // Handle unknown event types gracefully
+            console.warn(`[ChatBot] Unknown stream event type: ${event.event_type}, ignoring`);
           }
-        } catch (e) {
-          console.warn('Failed to parse stream event:', jsonStr, e);
+          
+        } catch (error) {
+          // Enhanced error handling for JSON parsing
+          if (error instanceof SyntaxError) {
+            console.warn('[ChatBot] Failed to parse stream event JSON:', error.message);
+          } else if (error instanceof Error) {
+            console.warn('[ChatBot] Error processing stream event:', error.message);
+          } else {
+            console.warn('[ChatBot] Unknown error processing stream event:', error);
+          }
+          
+          // Don't break the stream for individual event parsing errors
+          // The stream will continue processing other events
         }
       };
 
@@ -271,6 +392,7 @@ const ChatbotMain: React.FunctionComponent = () => {
         },
       ]);
     } finally {
+      clearTimeout(timeoutId);
       setIsMessageSendButtonDisabled(false);
     }
   };
@@ -283,6 +405,30 @@ const ChatbotMain: React.FunctionComponent = () => {
   return (
     <>
       {isShareChatbotOpen && <ChatbotShareModal onToggle={() => setIsShareChatbotOpen(!isShareChatbotOpen)} />}
+      
+      {/* Alert notifications for user feedback */}
+      {alerts.length > 0 && (
+        <AlertGroup 
+          isToast 
+          style={{ 
+            position: 'fixed', 
+            top: '20px', 
+            right: '20px', 
+            zIndex: 9999,
+            maxWidth: '400px'
+          }}
+        >
+                     {alerts.map(alert => (
+             <Alert
+               key={alert.id}
+               variant={alert.variant}
+               title={alert.title}
+               isInline
+             />
+           ))}
+        </AlertGroup>
+      )}
+      
       <Chatbot displayMode={displayMode} data-testid="chatbot">
         <ChatbotHeader>
           <ChatbotHeaderMain>

@@ -8,11 +8,11 @@ import (
 	"runtime/debug"
 
 	"github.com/google/uuid"
-	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/constants"
-	helper "github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/helpers"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 	"github.com/rs/cors"
 
-	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/auth"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/auth"
 )
 
 func (app *App) RecoverPanic(next http.Handler) http.Handler {
@@ -21,7 +21,8 @@ func (app *App) RecoverPanic(next http.Handler) http.Handler {
 			if err := recover(); err != nil {
 				w.Header().Set("Connection", "close")
 				app.serverErrorResponse(w, r, fmt.Errorf("%s", err))
-				app.logger.Error("Recovered from panic", slog.String("stack_trace", string(debug.Stack())))
+				logger := helper.GetContextLoggerFromReq(r)
+				logger.Error("Recovered from panic", slog.String("stack_trace", string(debug.Stack())))
 			}
 		}()
 
@@ -78,7 +79,8 @@ func (app *App) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		oauthHandler := auth.NewOAuthHandler(app.config)
+		logger := helper.GetContextLoggerFromReq(r)
+		oauthHandler := auth.NewOAuthHandler(app.config, logger)
 		if err := oauthHandler.ValidateToken(r.Context(), token); err != nil {
 			app.forbiddenResponse(w, r, err.Error())
 			return

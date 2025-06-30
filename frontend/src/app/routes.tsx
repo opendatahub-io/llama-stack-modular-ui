@@ -1,6 +1,6 @@
+import { Bullseye, Button, Spinner } from '@patternfly/react-core';
 import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { Bullseye, Spinner, Button } from '@patternfly/react-core';
 import { authService } from './services/authService';
 
 const ChatbotMain = lazy(() => import('./Chatbot/ChatbotMain').then(module => ({ default: module.ChatbotMain })));
@@ -25,8 +25,9 @@ function authenticate(setLoginError: React.Dispatch<React.SetStateAction<string 
     try {
       await authService.initiateLogin();
       setIsAuthenticated(authService.isAuthenticated());
-    } catch (e: any) {
-      setLoginError(e?.message || 'Login failed');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Login failed';
+      setLoginError(errorMessage);
     }
   };
 }

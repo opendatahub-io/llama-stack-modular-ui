@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	helper "github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/helpers"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 )
 
 type HTTPClientInterface interface {

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/opendatahub-io/llama-stack-modular-ui/bff/internal/constants"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
 )
 
 func GetContextLoggerFromReq(r *http.Request) *slog.Logger {

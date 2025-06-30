@@ -186,8 +186,7 @@ exports[`App tests should render default App component 1`] = `
               data-ouia-safe="true"
             >
               <a
-                aria-current="page"
-                class="pf-v6-c-nav__link pf-m-current active"
+                class="pf-v6-c-nav__link"
                 data-discover="true"
                 href="/"
               >
@@ -206,21 +205,23 @@ exports[`App tests should render default App component 1`] = `
         id="primary-app-container"
         tabindex="-1"
       >
-        <svg
-          aria-label="Contents"
-          aria-valuetext="Loading..."
-          class="pf-v6-c-spinner pf-m-sm"
-          role="progressbar"
-          viewBox="0 0 100 100"
+        <div
+          class="login-container"
         >
-          <circle
-            class="pf-v6-c-spinner__path"
-            cx="50"
-            cy="50"
-            fill="none"
-            r="45"
-          />
-        </svg>
+          <button
+            class="pf-v6-c-button pf-m-primary login-btn"
+            data-ouia-component-id="OUIA-Generated-Button-primary-1"
+            data-ouia-component-type="PF6/Button"
+            data-ouia-safe="true"
+            type="button"
+          >
+            <span
+              class="pf-v6-c-button__text"
+            >
+              Login with OpenShift
+            </span>
+          </button>
+        </div>
       </main>
     </div>
   </div>
