@@ -7,6 +7,18 @@ type EnvConfig struct {
 	StaticAssetsDir string
 	LogLevel        slog.Level
 	AllowedOrigins  []string
+
+	// Llama Stack Configuration
+	LlamaStackURL string
+
+	// OAuth Configuration
+	OAuthEnabled          bool
+	OAuthClientID         string
+	OAuthClientSecret     string
+	OAuthRedirectURI      string
+	OAuthServerURL        string
+	OpenShiftApiServerUrl string
+	OAuthUserInfoEndpoint string
 }
 
 //MockK8Client    bool

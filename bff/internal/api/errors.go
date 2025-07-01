@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations"
 	"net/http"
 	"strconv"
+
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations"
 )
 
 type HTTPError struct {
@@ -28,7 +30,8 @@ func (app *App) LogError(r *http.Request, err error) {
 		uri    = r.URL.RequestURI()
 	)
 
-	app.logger.Error(err.Error(), "method", method, "uri", uri)
+	logger := helper.GetContextLoggerFromReq(r)
+	logger.Error(err.Error(), "method", method, "uri", uri)
 }
 
 // TODO: remove nolint comment below when we use this method
