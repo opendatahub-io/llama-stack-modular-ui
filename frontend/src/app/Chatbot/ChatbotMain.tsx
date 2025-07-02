@@ -1,6 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
-import { generateId, getId } from '@app/utils/utils';
+import * as React from 'react';
+import {
+  Alert,
+  AlertActionCloseButton,
+  Button,
+  Drawer,
+  DrawerContent,
+  DrawerContentBody,
+  DropEvent,
+  Label,
+  Select,
+  SelectOption,
+  Spinner,
+  Title,
+} from '@patternfly/react-core';
 import {
   Chatbot,
   ChatbotContent,
@@ -14,16 +27,19 @@ import {
   ChatbotWelcomePrompt,
   MessageBar,
   MessageBox,
-  MessageProps
+  MessageProps,
 } from '@patternfly/chatbot';
-import '@patternfly/chatbot/dist/css/main.css';
-import { Alert, Button, Label, Select, SelectOption, Spinner, Title } from '@patternfly/react-core';
+import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
+import { ChatMessage, completeChat } from '@app/services/llamaStackService';
+import { ChatbotSourceSettings, ChatbotSourceSettingsModal } from './sourceUpload/ChatbotSourceSettingsModal';
+import { ChatbotSourceUploadPanel } from './sourceUpload/ChatbotSourceUploadPanel';
+import { getId } from '@app/utils/utils';
 import { ShareSquareIcon } from '@patternfly/react-icons';
-import * as React from 'react';
-import botAvatar from '../bgimages/bot_avatar.svg';
 import userAvatar from '../bgimages/user_avatar.svg';
+import botAvatar from '../bgimages/bot_avatar.svg';
 import { ChatbotMessages } from './ChatbotMessagesList';
 import { ChatbotShareModal } from './ChatbotShareModal';
+import '@patternfly/chatbot/dist/css/main.css';
 
 const initialBotMessage: MessageProps = {
   id: getId(),
@@ -34,16 +50,21 @@ const initialBotMessage: MessageProps = {
 };
 
 const ChatbotMain: React.FunctionComponent = () => {
+  const [alertKey, setAlertKey] = React.useState<number>(0);
   const displayMode = ChatbotDisplayMode.embedded;
   const typingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [isMessageSendButtonDisabled, setIsMessageSendButtonDisabled] = React.useState(false);
-  const [messages, setMessages] = React.useState<MessageProps[]>([initialBotMessage]);
-  const [showPopover, setShowPopover] = React.useState(false);
-  const [isShareChatbotOpen, setIsShareChatbotOpen] = React.useState(false);
-  const scrollToBottomRef = React.useRef<HTMLDivElement>(null);
-  const { models, loading, error, fetchLlamaModels } = useFetchLlamaModels();
   const [selectedModelId, setSelectedModelId] = React.useState<string | undefined>(undefined);
   const [isModelSelectOpen, setIsModelSelectOpen] = React.useState(false);
+  const { models, loading, error, fetchLlamaModels } = useFetchLlamaModels();
+  const [isMessageSendButtonDisabled, setIsMessageSendButtonDisabled] = React.useState(false);
+  const [isShareChatbotOpen, setIsShareChatbotOpen] = React.useState(false);
+  const [isSourceSettingsOpen, setIsSourceSettingsOpen] = React.useState(false);
+  const [messages, setMessages] = React.useState<MessageProps[]>([initialBotMessage]);
+  const [selectedSource, setSelectedSource] = React.useState<File[]>([]);
+  const [selectedSourceSettings, setSelectedSourceSettings] = React.useState<ChatbotSourceSettings | null>(null);
+  const [showPopover, setShowPopover] = React.useState(false);
+  const [showSuccessAlert, setShowSuccessAlert] = React.useState(false);
+  const scrollToBottomRef = React.useRef<HTMLDivElement>(null);
 
   const footnoteProps = {
     label: 'Always review AI generated content prior to use',
@@ -67,8 +88,33 @@ const ChatbotMain: React.FunctionComponent = () => {
     },
   };
 
+  const successAlert = showSuccessAlert ? (
+    <Alert
+      key={`source-upload-success-${alertKey}`}
+      isInline
+      variant="success"
+      title="Source uploaded"
+      timeout={4000}
+      actionClose={<AlertActionCloseButton onClose={() => setShowSuccessAlert(false)} />}
+      onTimeout={() => setShowSuccessAlert(false)}
+    >
+      <p>
+        This source must be chunked and embedded before it is available for retrieval. This may take a few minutes
+        depending on the size.
+      </p>
+    </Alert>
+  ) : (
+    <></>
+  );
+
   React.useEffect(() => {
     fetchLlamaModels();
+
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -79,31 +125,47 @@ const ChatbotMain: React.FunctionComponent = () => {
   }, [messages]);
 
   React.useEffect(() => {
-    if (models.length > 0 && !selectedModelId) {
+    if (models.length && !selectedModelId) {
       setSelectedModelId(models[0].identifier);
     }
   }, [models, selectedModelId]);
 
   React.useEffect(() => {
-    return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current);
-      }
-    };
-  }, []);
-
+    if (selectedSource.length > 0) {
+      setIsSourceSettingsOpen(true);
+    }
+  }, [selectedSource]);
 
   if (loading) {
     return <Spinner size="sm" />;
   }
 
-  if (error) {
-    return <Alert variant="warning" isInline title="Cannot fetch models">{error}</Alert>;
-  }
+  // TODO: Uncomment this when the backend is ready
+  // if (error) {
+  //   return <Alert variant="warning" isInline title="Cannot fetch models">{error}</Alert>;
+  // }
+
+  const handleSourceDrop = (event: DropEvent, source: File[]) => {
+    setSelectedSource(source);
+    setSelectedSourceSettings(null);
+  };
+
+  const removeUploadedSource = (sourceName: string) => {
+    setSelectedSource((sources) => sources.filter((f) => f.name !== sourceName));
+  };
+
+  const handleModelSelect = (event: React.MouseEvent | React.KeyboardEvent | undefined, value: string) => {
+    setSelectedModelId(value);
+    setIsModelSelectOpen(false);
+  };
+
+  const showAlert = () => {
+    setAlertKey((key) => key + 1);
+    setShowSuccessAlert(true);
+  };
 
   const handleMessageSend = async (userInput: string) => {
     if (!userInput || !selectedModelId) {
-      console.log('No user input or model ID ', userInput, selectedModelId);
       return;
     }
 
@@ -120,11 +182,10 @@ const ChatbotMain: React.FunctionComponent = () => {
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
 
-    const assistantMessageId = generateId();
     setMessages((prev) => [
       ...prev,
       {
-        id: assistantMessageId,
+        id: getId(),
         role: 'bot',
         content: '',
         name: 'Bot',
@@ -173,11 +234,7 @@ const ChatbotMain: React.FunctionComponent = () => {
             const nextChar = typingQueue.shift()!;
             assistantContent += nextChar;
             setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: assistantContent + '▌' }
-                  : msg
-              )
+              prev.map((msg) => (msg.id === getId() ? { ...msg, content: assistantContent + '▌' } : msg)),
             );
           } else {
             if (typingIntervalRef.current) {
@@ -187,7 +244,6 @@ const ChatbotMain: React.FunctionComponent = () => {
           }
         }, 10);
       };
-
 
       const processStreamEvent = (jsonStr: string) => {
         try {
@@ -212,11 +268,7 @@ const ChatbotMain: React.FunctionComponent = () => {
                 setTimeout(finalize, 20);
               } else {
                 setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessageId
-                      ? { ...msg, content: assistantContent }
-                      : msg
-                  )
+                  prev.map((msg) => (msg.id === getId() ? { ...msg, content: assistantContent } : msg)),
                 );
               }
             };
@@ -266,84 +318,116 @@ const ChatbotMain: React.FunctionComponent = () => {
     }
   };
 
-  const handleModelSelect = (event: React.MouseEvent | React.KeyboardEvent | undefined, value: string) => {
-    setSelectedModelId(value);
-    setIsModelSelectOpen(false);
+  const handleSourceSettingsSubmit = (settings: ChatbotSourceSettings | null) => {
+    setSelectedSourceSettings(settings);
+    setIsSourceSettingsOpen(!isSourceSettingsOpen);
+
+    if (settings?.chunkOverlap && settings?.maxChunkLength) {
+      showAlert();
+    } else {
+      setSelectedSource([]);
+    }
   };
 
   return (
     <>
       {isShareChatbotOpen && <ChatbotShareModal onToggle={() => setIsShareChatbotOpen(!isShareChatbotOpen)} />}
-      <Chatbot displayMode={displayMode} data-testid="chatbot">
-        <ChatbotHeader>
-          <ChatbotHeaderMain>
-            <ChatbotHeaderTitle>
-              <Title headingLevel="h1" size="xl" style={{ fontWeight: 'bold' }}>
-                Chatbot
-              </Title>
-              <Label variant="outline" color="blue" style={{ marginLeft: 'var(--pf-t--global--spacer--sm)' }}>
-                {selectedModelId}
-              </Label>
-              <Select
-                variant="default"
-                aria-label="Select Model"
-                onOpenChange={setIsModelSelectOpen}
-                onSelect={(event, value) => handleModelSelect(event, value as string)}
-                selected={selectedModelId}
-                isOpen={isModelSelectOpen}
-                style={{ marginLeft: 16, minWidth: 200 }}
-                toggle={{
-                  toggleNode: (
-                    <Button
-                      variant="secondary"
-                      aria-label="Select Model Toggle"
-                      style={{ minWidth: 200 }}
-                    >
-                      {selectedModelId || 'Select model'}
-                    </Button>
-                  )
-                }}
-              >
-                {Array.isArray(models) && models.map((model) => (
-                  <SelectOption key={model.identifier} value={model.identifier}>
-                    {model.identifier}
-                  </SelectOption>
-                ))}
-              </Select>
-            </ChatbotHeaderTitle>
-          </ChatbotHeaderMain>
-          <ChatbotHeaderActions>
-            <Button
-              icon={<ShareSquareIcon />}
-              variant="plain"
-              aria-label="Share chatbot"
-              data-testid="share-chatbot-button"
-              onClick={() => {
-                setIsShareChatbotOpen(!isShareChatbotOpen);
-              }}
+      {isSourceSettingsOpen && (
+        <ChatbotSourceSettingsModal
+          onToggle={() => setIsSourceSettingsOpen(!isSourceSettingsOpen)}
+          onSubmitSettings={handleSourceSettingsSubmit}
+        />
+      )}
+      <Drawer isExpanded={true} isInline={true} position="right">
+        <DrawerContent
+          panelContent={
+            <ChatbotSourceUploadPanel
+              alert={successAlert}
+              handleSourceDrop={handleSourceDrop}
+              selectedSource={selectedSource}
+              selectedSourceSettings={selectedSourceSettings}
+              removeUploadedSource={removeUploadedSource}
+              setSelectedSourceSettings={setSelectedSourceSettings}
             />
-          </ChatbotHeaderActions>
-        </ChatbotHeader>
-        <ChatbotContent>
-          <MessageBox position="bottom">
-            <ChatbotWelcomePrompt title="Hello, User!" description="Ask a question to chat with your model" />
-            <ChatbotMessages messageList={messages} scrollRef={scrollToBottomRef} />
-          </MessageBox>
-        </ChatbotContent>
-        <ChatbotFooter>
-          <MessageBar
-            onSendMessage={(message) => {
-              if (typeof message === 'string') {
-                handleMessageSend(message);
-              }
-            }}
-            hasAttachButton={false}
-            isSendButtonDisabled={isMessageSendButtonDisabled}
-            data-testid="chatbot-message-bar"
-          />
-          <ChatbotFootnote {...footnoteProps} />
-        </ChatbotFooter>
-      </Chatbot>
+          }
+        >
+          <DrawerContentBody style={{ overflowY: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <Chatbot displayMode={displayMode} data-testid="chatbot">
+              <ChatbotHeader>
+                <ChatbotHeaderMain>
+                  <ChatbotHeaderTitle>
+                    <Title headingLevel="h1" size="xl" style={{ fontWeight: 'bold' }}>
+                      Chatbot
+                    </Title>
+                    <Label variant="outline" color="blue" style={{ marginLeft: 'var(--pf-t--global--spacer--md)' }}>
+                      {selectedModelId}
+                    </Label>
+                    <Select
+                      variant="default"
+                      aria-label="Select Model"
+                      onOpenChange={setIsModelSelectOpen}
+                      onSelect={(event, value) => handleModelSelect(event, value as string)}
+                      selected={selectedModelId}
+                      isOpen={isModelSelectOpen}
+                      data-testid="model-select"
+                      toggle={{
+                        toggleNode: (
+                          <Button
+                            variant="secondary"
+                            aria-label="Select Model Toggle"
+                            className="pf-v6-u-w-25"
+                            style={{ marginLeft: 'var(--pf-t--global--spacer--md)' }}
+                            data-testid="model-select-toggle"
+                          >
+                            {selectedModelId || 'Select model'}
+                          </Button>
+                        ),
+                      }}
+                    >
+                      {Array.isArray(models) &&
+                        models.map((model) => (
+                          <SelectOption key={model.identifier} value={model.identifier}>
+                            {model.identifier}
+                          </SelectOption>
+                        ))}
+                    </Select>
+                  </ChatbotHeaderTitle>
+                </ChatbotHeaderMain>
+                <ChatbotHeaderActions>
+                  <Button
+                    icon={<ShareSquareIcon />}
+                    variant="plain"
+                    aria-label="Share chatbot"
+                    data-testid="share-chatbot-button"
+                    onClick={() => {
+                      setIsShareChatbotOpen(!isShareChatbotOpen);
+                    }}
+                  />
+                </ChatbotHeaderActions>
+              </ChatbotHeader>
+              <ChatbotContent>
+                <MessageBox position="bottom">
+                  <ChatbotWelcomePrompt title="Hello, User!" description="Ask a question to chat with your model" />
+                  <ChatbotMessages messageList={messages} scrollRef={scrollToBottomRef} />
+                </MessageBox>
+              </ChatbotContent>
+              <ChatbotFooter>
+                <MessageBar
+                  onSendMessage={(message) => {
+                    if (typeof message === 'string') {
+                      handleMessageSend(message);
+                    }
+                  }}
+                  hasAttachButton={false}
+                  isSendButtonDisabled={isMessageSendButtonDisabled}
+                  data-testid="chatbot-message-bar"
+                />
+                <ChatbotFootnote {...footnoteProps} />
+              </ChatbotFooter>
+            </Chatbot>
+          </DrawerContentBody>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 };
