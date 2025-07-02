@@ -109,6 +109,12 @@ const ChatbotMain: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     fetchLlamaModels();
+
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -119,18 +125,10 @@ const ChatbotMain: React.FunctionComponent = () => {
   }, [messages]);
 
   React.useEffect(() => {
-    if (models.length > 0 && !selectedModelId) {
+    if (models.length && !selectedModelId) {
       setSelectedModelId(models[0].identifier);
     }
   }, [models, selectedModelId]);
-
-  React.useEffect(() => {
-    return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current);
-      }
-    };
-  }, []);
 
   React.useEffect(() => {
     if (selectedSource.length > 0) {

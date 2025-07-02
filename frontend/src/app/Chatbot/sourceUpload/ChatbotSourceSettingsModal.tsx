@@ -70,10 +70,10 @@ const ChatbotSourceSettingsModal: React.FC<ChatbotSourceSettingsModalProps> = ({
 
   const onSourceSelect = (value: string) => {
     setIsDropdownOpen(false);
-      setFields((prev) => ({
-        ...prev,
-        embeddingModel: value,
-      }));
+    setFields((prev) => ({
+      ...prev,
+      embeddingModel: value,
+    }));
     onFocus();
   };
 
