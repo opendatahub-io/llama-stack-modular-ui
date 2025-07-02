@@ -30,7 +30,8 @@ import {
   AgentSession, 
   createSession, 
   sendTurnStreaming, 
-  ChatMessage 
+  ChatMessage,
+  getAgentDisplayName 
 } from '../services/llamaStackService';
 
 const getInitialBotMessage = (hasAgent: boolean, agentName?: string): MessageProps => ({
@@ -110,7 +111,7 @@ const ChatbotMain: React.FunctionComponent = () => {
   // Update welcome message when agent is selected
   React.useEffect(() => {
     if (selectedAgent && currentSession && chatMode === 'agent') {
-      const agentName = selectedAgent.agent_config.name || 'Assistant';
+      const agentName = getAgentDisplayName(selectedAgent);
       setMessages([getInitialBotMessage(true, agentName)]);
     } else if (!selectedAgent && chatMode === 'agent') {
       setMessages([getInitialBotMessage(false)]);
@@ -139,12 +140,12 @@ const ChatbotMain: React.FunctionComponent = () => {
     
     // Clear messages when switching to agent mode
     if (chatMode !== 'agent') {
-      setMessages([getInitialBotMessage(true, agent.agent_config.name || agent.agent_id)]);
+      setMessages([getInitialBotMessage(true, getAgentDisplayName(agent))]);
     }
     
     try {
       console.log('Creating session for agent:', agentId);
-      const session = await createSession(agentId, `Chat with ${agent.agent_config.name || 'Agent'}`);
+      const session = await createSession(agentId, `Chat with ${getAgentDisplayName(agent)}`);
       console.log('Session created successfully:', session);
       setCurrentSession(session);
       setChatMode('agent');
@@ -198,8 +199,8 @@ const ChatbotMain: React.FunctionComponent = () => {
     setMessages(updatedMessages);
 
     const assistantMessageId = generateId();
-    const assistantName = chatMode === 'agent' && selectedAgent?.agent_config.name 
-      ? selectedAgent.agent_config.name 
+    const assistantName = chatMode === 'agent' && selectedAgent 
+      ? getAgentDisplayName(selectedAgent)
       : 'Bot';
     
     setMessages((prev) => [
@@ -548,13 +549,13 @@ const ChatbotMain: React.FunctionComponent = () => {
                           style={{ minWidth: 250 }}
                           onClick={() => setIsAgentSelectOpen(!isAgentSelectOpen)}
                         >
-                          {selectedAgent?.agent_config.name || selectedAgent?.agent_id || 'Select agent'}
+                          {selectedAgent ? getAgentDisplayName(selectedAgent) : 'Select agent'}
                         </Button>
                       )}
                     >
                       {Array.isArray(agents) && agents.map((agent) => (
                         <SelectOption key={agent.agent_id} value={agent.agent_id}>
-                          {agent.agent_config.name || agent.agent_id}
+                          {getAgentDisplayName(agent)}
                         </SelectOption>
                       ))}
                     </Select>
@@ -657,13 +658,13 @@ const ChatbotMain: React.FunctionComponent = () => {
             <ChatbotWelcomePrompt 
               title={
                 chatMode === 'agent' 
-                  ? (selectedAgent ? `Chat with ${selectedAgent.agent_config.name || 'Agent'}` : 'Select an Agent')
+                  ? (selectedAgent ? `Chat with ${getAgentDisplayName(selectedAgent)}` : 'Select an Agent')
                   : 'Direct Chat Mode'
               } 
               description={
                 chatMode === 'agent' 
                   ? (selectedAgent && currentSession 
-                      ? `Connected to ${selectedAgent.agent_config.name || 'agent'} with session ${currentSession.session_id}. This agent has access to documents and can provide enhanced responses.`
+                      ? `Connected to ${getAgentDisplayName(selectedAgent)} with session ${currentSession.session_id}. This agent has access to documents and can provide enhanced responses.`
                       : 'Choose an agent from the dropdown above to start a conversation with enhanced capabilities.')
                   : (selectedModelId 
                       ? `Chatting directly with ${selectedModelId}. This mode provides basic chat without document retrieval.`
@@ -689,7 +690,7 @@ const ChatbotMain: React.FunctionComponent = () => {
             placeholder={
               chatMode === 'agent' 
                 ? (selectedAgent && currentSession 
-                    ? `Ask ${selectedAgent.agent_config.name || 'agent'} a question...`
+                    ? `Ask ${getAgentDisplayName(selectedAgent)} a question...`
                     : 'Select an agent to start chatting...')
                 : (selectedModelId 
                     ? 'Type your message...'

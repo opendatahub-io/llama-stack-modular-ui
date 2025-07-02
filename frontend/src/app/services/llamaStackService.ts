@@ -242,3 +242,37 @@ export const getSession = async (agentId: string, sessionId: string): Promise<Ag
     throw new Error(errorMessage);
   }
 };
+
+/**
+ * Generate a display name for an agent
+ * If agent has a name, use that. Otherwise create a composite name from model + toolgroups
+ */
+export const getAgentDisplayName = (agent: Agent): string => {
+  // If agent has a name, use it
+  if (agent.agent_config.name) {
+    return agent.agent_config.name;
+  }
+  
+  // Create composite name from model + toolgroups
+  const modelName = agent.agent_config.model;
+  const toolgroups = agent.agent_config.toolgroups || [];
+  
+  let compositeName = modelName;
+  
+  if (toolgroups.length > 0) {
+    const toolNames = toolgroups.map(tg => {
+      const toolName = typeof tg === 'string' ? tg : tg.name;
+      // Clean up tool names for display
+      return toolName
+        .replace('builtin::', '')
+        .replace('/', ' ')
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    });
+    
+    compositeName += ' + ' + toolNames.join(' + ');
+  }
+  
+  return compositeName;
+};
