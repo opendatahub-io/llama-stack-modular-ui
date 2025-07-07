@@ -8,13 +8,13 @@ import {
   DrawerContent,
   DrawerContentBody,
   DropEvent,
+  Flex,
+  FlexItem,
   Label,
   Select,
   SelectOption,
   Spinner,
   Title,
-  Flex,
-  FlexItem,
 } from '@patternfly/react-core';
 import {
   Chatbot,
@@ -46,9 +46,9 @@ import { ChatbotShareModal } from './ChatbotShareModal';
 import { 
   Agent, 
   AgentSession, 
-  createSession, 
-  sendTurnStreaming, 
-  getAgentDisplayName 
+  createSession,
+  getAgentDisplayName,
+  sendTurnStreaming
 } from '../services/llamaStackService';
 
 const getInitialBotMessage = (hasAgent: boolean, agentName?: string): MessageProps => ({
@@ -196,9 +196,9 @@ const ChatbotMain: React.FunctionComponent = () => {
       console.log('Session created successfully:', session);
       setCurrentSession(session);
       setChatMode('agent');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Session creation failed:', error);
-      setSessionError(error.message);
+      setSessionError(error instanceof Error ? error.message : 'Unknown error occurred');
       setCurrentSession(undefined);
     }
   };
