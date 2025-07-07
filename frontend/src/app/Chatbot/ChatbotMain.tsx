@@ -35,7 +35,7 @@ import '@patternfly/chatbot/dist/css/main.css';
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
 import useFetchAgents from '@app/utils/useFetchAgents';
 import { getId } from '@app/utils/utils';
-import { ChatMessage, completeChat } from '@app/services/llamaStackService';
+import { ChatMessage, completeChatStreaming } from '@app/services/llamaStackService';
 import { ChatbotSourceSettings, ChatbotSourceSettingsModal } from './sourceUpload/ChatbotSourceSettingsModal';
 import { ChatbotSourceUploadPanel } from './sourceUpload/ChatbotSourceUploadPanel';
 import { ShareSquareIcon } from '@patternfly/react-icons';
@@ -60,14 +60,6 @@ const getInitialBotMessage = (hasAgent: boolean, agentName?: string): MessagePro
   name: hasAgent ? (agentName || 'Agent') : 'Bot',
   avatar: botAvatar,
 });
-
-const initialBotMessage: MessageProps = {
-  id: getId(),
-  role: 'bot',
-  content: 'Hello! Ask a question to test out your AI system',
-  name: 'Bot',
-  avatar: botAvatar,
-};
 
 const ChatbotMain: React.FunctionComponent = () => {
   const [alertKey, setAlertKey] = React.useState<number>(0);
@@ -325,23 +317,16 @@ const ChatbotMain: React.FunctionComponent = () => {
         );
         console.log('Agent turn response received:', response.status, response.statusText);
       } else {
-        // Direct chat completion
-        response = await fetch('/api/llama-stack/v1/inference/chat-completion', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: updatedMessages.map((msg) => {
-              const isAssistant = msg.role === 'bot';
-              return {
-                role: isAssistant ? 'assistant' : 'user',
-                content: msg.content ?? '',
-                ...(isAssistant ? { stop_reason: 'end_of_message' } : {}),
-              };
-            }),
-            model_id: selectedModelId,
-            stream: true,
-          }),
-        });
+        // Direct chat completion using service
+        const chatMessages: ChatMessage[] = updatedMessages.map((msg) => ({
+          role: msg.role === 'bot' ? 'assistant' : 'user',
+          content: msg.content ?? '',
+          ...(msg.role === 'bot' ? { stop_reason: 'end_of_message' } : {}),
+        }));
+
+        console.log('Sending direct chat completion with messages:', chatMessages);
+        response = await completeChatStreaming(chatMessages, selectedModelId!);
+        console.log('Direct chat completion response received:', response.status, response.statusText);
       }
 
       clearTimeout(timeoutId);

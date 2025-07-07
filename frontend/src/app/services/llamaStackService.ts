@@ -2,6 +2,10 @@
 import type { Model as LlamaModel } from 'llama-stack-client/resources/models';
 import axios from '../utils/axios';
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
 // Roles must be 'user' and 'assistant' according to the Llama Stack API
 export type ChatMessage = {
   role: 'user' | 'assistant';
@@ -65,72 +69,96 @@ export type Turn = {
   completed_at?: string;
 };
 
-export type TurnRequest = {
-  messages: ChatMessage[];
-  stream?: boolean;
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Standardized error handling for API responses
+ */
+const handleApiError = (error: any, defaultMessage: string): Error => {
+  const errorMessage = error.response?.data?.message || error.message || defaultMessage;
+  return new Error(errorMessage);
 };
 
-export type TurnResponse = Turn;
+/**
+ * Format messages for API requests
+ */
+const formatMessages = (messages: ChatMessage[], stopReason: string = 'end_of_message'): ChatMessage[] => {
+  return messages.map((msg) => ({
+    ...msg,
+    ...(msg.role === 'assistant' && !msg.stop_reason ? { stop_reason: stopReason } : {}),
+  }));
+};
 
-export const listModels = (): Promise<LlamaModel[]> => {
+// ============================================================================
+// MODELS API
+// ============================================================================
+
+/**
+ * List all available models
+ */
+export const listModels = async (): Promise<LlamaModel[]> => {
   const url = '/api/llama-stack/v1/models';
-  return axios
-    .get(url)
-    .then((response) => response.data.data)
-    .catch((e) => {
-      const errorMessage = e.response?.data?.message || e.message || 'Failed to fetch models';
-      throw new Error(errorMessage);
-    });
+  
+  try {
+    const response = await axios.get(url);
+    return response.data.data;
+  } catch (error: any) {
+    throw handleApiError(error, 'Failed to fetch models');
+  }
 };
 
-export const completeChat = (messages: ChatMessage[], model_id: string): Promise<string> => {
+// ============================================================================
+// INFERENCE API
+// ============================================================================
+
+/**
+ * Complete chat with streaming support
+ * Using fetch for streaming responses
+ */
+export const completeChatStreaming = async (messages: ChatMessage[], modelId: string): Promise<Response> => {
   const url = '/api/llama-stack/v1/inference/chat-completion';
+  const formattedMessages = formatMessages(messages);
 
-  const formattedMessages = messages.map((msg) => {
-    if (msg.role === 'assistant' && !msg.stop_reason) {
-      return { ...msg, stop_reason: 'stop' };
-    }
-    return msg;
-  });
-
-  return fetch(url, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: formattedMessages, model_id }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        return response.text().then((msg) => {
-          throw new Error(msg || 'Failed to fetch chat completion');
-        });
-      }
-      return response.text();
-    })
-    .catch((error) => {
-      throw new Error(error.message || 'Chat completion error');
-    });
+    body: JSON.stringify({
+      messages: formattedMessages,
+      model_id: modelId,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Failed to fetch streaming chat completion');
+  }
+
+  return response;
 };
 
-// Agent API functions using SDK and axios where needed
+// ============================================================================
+// AGENTS API
+// ============================================================================
 
 /**
  * List all available agents
- * NOTE: Using axios since SDK doesn't expose agents.list()
  */
-export const listAgents = (): Promise<Agent[]> => {
+export const listAgents = async (): Promise<Agent[]> => {
   const url = '/api/llama-stack/v1/agents';
-  return axios
-    .get(url)
-    .then((response) => response.data.data)
-    .catch((e) => {
-      const errorMessage = e.response?.data?.message || e.message || 'Failed to fetch agents';
-      throw new Error(errorMessage);
-    });
+  
+  try {
+    const response = await axios.get(url);
+    return response.data.data;
+  } catch (error: any) {
+    throw handleApiError(error, 'Failed to fetch agents');
+  }
 };
 
 /**
  * Create a new session for an agent
- * Using HTTP API with better error handling
  */
 export const createSession = async (agentId: string, sessionName: string = 'Chat Session'): Promise<AgentSession> => {
   const url = `/api/llama-stack/v1/agents/${agentId}/session`;
@@ -139,55 +167,15 @@ export const createSession = async (agentId: string, sessionName: string = 'Chat
     const response = await axios.post(url, {
       session_name: sessionName
     });
-    
     return response.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to create session';
-    throw new Error(errorMessage);
-  }
-};
-
-/**
- * Send a turn in an agent session (non-streaming)
- * Using HTTP API with proper agent turn message format
- */
-export const sendTurn = async (
-  agentId: string,
-  sessionId: string,
-  messages: ChatMessage[]
-): Promise<Turn> => {
-  const url = `/api/llama-stack/v1/agents/${agentId}/session/${sessionId}/turn`;
-  
-  try {
-    // Format messages for agent turn API - only send the latest user message
-    // Agent sessions maintain context, so we only send the new input for this turn
-    const userMessages = messages.filter(msg => msg.role === 'user');
-    const latestUserMessage = userMessages[userMessages.length - 1];
-    
-    if (!latestUserMessage) {
-      throw new Error('No user message found');
-    }
-
-    const turnMessages = [{
-      role: 'user',
-      content: latestUserMessage.content
-    }];
-
-    const response = await axios.post(url, {
-      messages: turnMessages,
-      stream: false
-    });
-    
-    return response.data;
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to send turn';
-    throw new Error(errorMessage);
+    throw handleApiError(error, 'Failed to create session');
   }
 };
 
 /**
  * Send a turn in an agent session (streaming)
- * Using fetch for streaming support with proper agent turn message format
+ * Using fetch for streaming support
  */
 export const sendTurnStreaming = async (
   agentId: string,
@@ -206,7 +194,7 @@ export const sendTurnStreaming = async (
   }
 
   const turnMessages = [{
-    role: 'user',
+    role: 'user' as const,
     content: latestUserMessage.content
   }];
 
@@ -229,7 +217,6 @@ export const sendTurnStreaming = async (
 
 /**
  * Retrieve a session by ID
- * Using HTTP API with better error handling
  */
 export const getSession = async (agentId: string, sessionId: string): Promise<AgentSession> => {
   const url = `/api/llama-stack/v1/agents/${agentId}/session/${sessionId}`;
@@ -238,10 +225,13 @@ export const getSession = async (agentId: string, sessionId: string): Promise<Ag
     const response = await axios.get(url);
     return response.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to retrieve session';
-    throw new Error(errorMessage);
+    throw handleApiError(error, 'Failed to retrieve session');
   }
 };
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
 /**
  * Generate a display name for an agent
