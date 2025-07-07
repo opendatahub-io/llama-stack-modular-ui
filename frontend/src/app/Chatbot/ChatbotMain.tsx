@@ -35,7 +35,12 @@ import '@patternfly/chatbot/dist/css/main.css';
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
 import useFetchAgents from '@app/utils/useFetchAgents';
 import { getId } from '@app/utils/utils';
-import { ChatMessage, completeChatStreaming } from '@app/services/llamaStackService';
+import { 
+  AgentStreamPayload,
+  ChatMessage,
+  DirectLLMStreamEvent,
+  completeChatStreaming
+} from '@app/services/llamaStackService';
 import { ChatbotSourceSettings, ChatbotSourceSettingsModal } from './sourceUpload/ChatbotSourceSettingsModal';
 import { ChatbotSourceUploadPanel } from './sourceUpload/ChatbotSourceUploadPanel';
 import { ShareSquareIcon } from '@patternfly/react-icons';
@@ -60,6 +65,11 @@ const getInitialBotMessage = (hasAgent: boolean, agentName?: string): MessagePro
   name: hasAgent ? (agentName || 'Agent') : 'Bot',
   avatar: botAvatar,
 });
+
+// Constants
+const STREAMING_TIMEOUT_MS = 30000; // 30 seconds
+const TYPING_ANIMATION_INTERVAL_MS = 10; // 10 milliseconds between characters
+const FINALIZE_DELAY_MS = 20; // 20 milliseconds delay for finalization
 
 const ChatbotMain: React.FunctionComponent = () => {
   const [alertKey, setAlertKey] = React.useState<number>(0);
@@ -234,14 +244,6 @@ const ChatbotMain: React.FunctionComponent = () => {
     return <Spinner size="sm" />;
   }
 
-  if (modelsError && agentsError) {
-    return (
-      <Alert variant="warning" isInline title="Cannot fetch data">
-        Models: {modelsError} | Agents: {agentsError}
-      </Alert>
-    );
-  }
-
   const handleMessageSend = async (userInput: string) => {
     if (!userInput) {
       console.log('No user input provided');
@@ -289,7 +291,7 @@ const ChatbotMain: React.FunctionComponent = () => {
     ]);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), STREAMING_TIMEOUT_MS);
 
     try {
       let response: Response;
@@ -358,9 +360,121 @@ const ChatbotMain: React.FunctionComponent = () => {
               typingIntervalRef.current = null;
             }
           }
-        }, 10);
+        }, TYPING_ANIMATION_INTERVAL_MS);
       };
 
+      // Shared finalization logic for stream completion
+      const finalizeStreamContent = () => {
+        if (typingQueue.length > 0) {
+          setTimeout(finalizeStreamContent, FINALIZE_DELAY_MS);
+        } else {
+          // Add document references if any were found
+          let finalContent = assistantContent;
+          if (documentReferences.length > 0) {
+            finalContent += '\n\n**Sources:**\n';
+            documentReferences.forEach((ref, index) => {
+              finalContent += `${index + 1}. ${ref}\n`;
+            });
+          }
+          
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessageId
+                ? { ...msg, content: finalContent }
+                : msg
+            )
+          );
+        }
+      };
+
+      // Process agent streaming events (with payload structure)
+      const processAgentStreamEvent = (payload: AgentStreamPayload) => {
+        console.log('Processing agent event type:', payload.event_type);
+        
+        if (payload.event_type === 'step_progress' && payload.delta?.text) {
+          const deltaText = payload.delta.text || '';
+          console.log('Adding agent delta text:', deltaText);
+          typingQueue.push(...deltaText.split(''));
+          startTyping();
+        } else if (payload.event_type === 'step_complete') {
+          console.log('Agent step complete event received:', payload.event_type);
+          
+          // Capture document references from tool execution steps
+          if (payload.step_details?.step_type === 'tool_execution' && payload.step_details?.tool_responses) {
+            const toolResponses = payload.step_details.tool_responses;
+            for (const response of toolResponses) {
+              if (response.tool_name === 'knowledge_search' && response.content) {
+                // Extract file names from the content
+                const fileNames = new Set<string>();
+                for (const contentItem of response.content) {
+                  if (contentItem.type === 'text' && contentItem.text) {
+                    const text = contentItem.text;
+                    // Look for file names in metadata patterns
+                    const fileNameMatches = text.match(/file_name['"]:\s*['"]([^'"]+)['"]/g);
+                    if (fileNameMatches) {
+                      for (const match of fileNameMatches) {
+                        const fileName = match.replace(/file_name['"]:\s*['"]([^'"]+)['"]/, '$1');
+                        if (fileName && fileName !== 'file_name') {
+                          fileNames.add(fileName);
+                        }
+                      }
+                    }
+                  }
+                }
+                documentReferences = Array.from(fileNames);
+                console.log('Captured document references:', documentReferences);
+              }
+            }
+          }
+        } else if (payload.event_type === 'turn_complete') {
+          console.log('Agent turn complete event received:', payload.event_type);
+          
+          // Only use turn_complete content as fallback if we have no streamed content
+          if (payload.turn?.output_message?.content && assistantContent.trim() === '') {
+            let finalContent = payload.turn.output_message.content;
+            console.log('Using turn_complete fallback content:', finalContent);
+            
+            // Add document references if any were found
+            if (documentReferences.length > 0) {
+              finalContent += '\n\n**Sources:**\n';
+              documentReferences.forEach((ref, index) => {
+                finalContent += `${index + 1}. ${ref}\n`;
+              });
+            }
+            
+            assistantContent = finalContent;
+            
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg)),
+            );
+          }
+          
+          streamEnded = true;
+          finalizeStreamContent();
+        } else {
+          console.log('Unhandled agent event type:', payload.event_type, payload);
+        }
+      };
+
+      // Process direct LLM streaming events (simpler structure)
+      const processDirectLLMStreamEvent = (event: DirectLLMStreamEvent) => {
+        console.log('Processing direct LLM event type:', event.event_type);
+        
+        if (event.event_type === 'progress' && event.delta?.text) {
+          const deltaText = event.delta.text || '';
+          console.log('Adding direct LLM delta text:', deltaText);
+          typingQueue.push(...deltaText.split(''));
+          startTyping();
+        } else if (event.event_type === 'complete') {
+          console.log('Direct LLM stream complete event received');
+          streamEnded = true;
+          finalizeStreamContent();
+        } else {
+          console.log('Unhandled direct LLM event type:', event.event_type, event);
+        }
+      };
+
+      // Main stream event processor (dispatcher)
       const processStreamEvent = (jsonStr: string) => {
         console.log('Received stream event:', jsonStr);
         try {
@@ -371,137 +485,11 @@ const ChatbotMain: React.FunctionComponent = () => {
             return;
           }
 
-          // Handle agent streaming format (with event.payload structure)
+          // Dispatch to appropriate handler based on event structure
           if (parsed.event?.payload) {
-            const payload = parsed.event.payload;
-            console.log('Processing agent event type:', payload.event_type);
-            
-            if (payload.event_type === 'step_progress' && payload.delta?.text) {
-              const deltaText = payload.delta.text || '';
-              console.log('Adding agent delta text:', deltaText);
-              typingQueue.push(...deltaText.split(''));
-              startTyping();
-            } else if (payload.event_type === 'step_complete') {
-              console.log('Agent step complete event received:', payload.event_type);
-              
-              // Capture document references from tool execution steps
-              if (payload.step_details?.step_type === 'tool_execution' && payload.step_details?.tool_responses) {
-                const toolResponses = payload.step_details.tool_responses;
-                for (const response of toolResponses) {
-                  if (response.tool_name === 'knowledge_search' && response.content) {
-                    // Extract file names from the content
-                    const fileNames = new Set<string>();
-                    for (const contentItem of response.content) {
-                      if (contentItem.type === 'text' && contentItem.text) {
-                        const text = contentItem.text;
-                        // Look for file names in metadata patterns
-                        const fileNameMatches = text.match(/file_name['"]:\s*['"]([^'"]+)['"]/g);
-                        if (fileNameMatches) {
-                          for (const match of fileNameMatches) {
-                            const fileName = match.replace(/file_name['"]:\s*['"]([^'"]+)['"]/, '$1');
-                            if (fileName && fileName !== 'file_name') {
-                              fileNames.add(fileName);
-                            }
-                          }
-                        }
-                      }
-                    }
-                    documentReferences = Array.from(fileNames);
-                    console.log('Captured document references:', documentReferences);
-                  }
-                }
-              }
-            } else if (payload.event_type === 'turn_complete') {
-              console.log('Agent turn complete event received:', payload.event_type);
-              
-              // Only use turn_complete content as fallback if we have no streamed content
-              if (payload.turn?.output_message?.content && assistantContent.trim() === '') {
-                let finalContent = payload.turn.output_message.content;
-                console.log('Using turn_complete fallback content:', finalContent);
-                
-                // Add document references if any were found
-                if (documentReferences.length > 0) {
-                  finalContent += '\n\n**Sources:**\n';
-                  documentReferences.forEach((ref, index) => {
-                    finalContent += `${index + 1}. ${ref}\n`;
-                  });
-                }
-                
-                assistantContent = finalContent;
-                
-                setMessages((prev) =>
-                  prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg)),
-                );
-              }
-              
-              streamEnded = true;
-              const finalize = () => {
-                if (typingQueue.length > 0) {
-                  setTimeout(finalize, 20);
-                } else {
-                  // Add document references if any were found
-                  let finalContent = assistantContent;
-                  if (documentReferences.length > 0) {
-                    finalContent += '\n\n**Sources:**\n';
-                    documentReferences.forEach((ref, index) => {
-                      finalContent += `${index + 1}. ${ref}\n`;
-                    });
-                  }
-                  
-                  // Ensure final content is set
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, content: finalContent }
-                        : msg
-                    )
-                  );
-                }
-              };
-              finalize();
-            } else {
-              console.log('Unhandled agent event type:', payload.event_type, payload);
-            }
-          }
-          // Handle direct LLM streaming format (simpler event structure)
-          else if (parsed.event) {
-            const event = parsed.event;
-            console.log('Processing direct LLM event type:', event.event_type);
-            
-            if (event.event_type === 'progress' && event.delta?.text) {
-              const deltaText = event.delta.text || '';
-              console.log('Adding direct LLM delta text:', deltaText);
-              typingQueue.push(...deltaText.split(''));
-              startTyping();
-            } else if (event.event_type === 'complete') {
-              console.log('Direct LLM stream complete event received');
-              streamEnded = true;
-              const finalize = () => {
-                if (typingQueue.length > 0) {
-                  setTimeout(finalize, 20);
-                } else {
-                  // Add document references if any were found (though unlikely for direct LLM)
-                  let finalContent = assistantContent;
-                  if (documentReferences.length > 0) {
-                    finalContent += '\n\n**Sources:**\n';
-                    documentReferences.forEach((ref, index) => {
-                      finalContent += `${index + 1}. ${ref}\n`;
-                    });
-                  }
-                  
-                  setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.id === assistantMessageId
-                        ? { ...msg, content: finalContent }
-                        : msg
-                    )
-                  );
-                }
-              };
-              finalize();
-            } else {
-              console.log('Unhandled direct LLM event type:', event.event_type, event);
-            }
+            processAgentStreamEvent(parsed.event.payload);
+          } else if (parsed.event) {
+            processDirectLLMStreamEvent(parsed.event);
           } else {
             console.warn('Unknown stream event format:', parsed);
           }

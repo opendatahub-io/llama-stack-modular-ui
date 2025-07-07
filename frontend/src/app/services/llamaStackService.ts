@@ -69,6 +69,36 @@ export type Turn = {
   completed_at?: string;
 };
 
+// Stream event types for real-time processing
+export interface AgentStreamPayload {
+  event_type: string;
+  delta?: {
+    text?: string;
+  };
+  step_details?: {
+    step_type: string;
+    tool_responses?: Array<{
+      tool_name: string;
+      content?: Array<{
+        type: string;
+        text?: string;
+      }>;
+    }>;
+  };
+  turn?: {
+    output_message?: {
+      content: string;
+    };
+  };
+}
+
+export interface DirectLLMStreamEvent {
+  event_type: string;
+  delta?: {
+    text?: string;
+  };
+}
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
