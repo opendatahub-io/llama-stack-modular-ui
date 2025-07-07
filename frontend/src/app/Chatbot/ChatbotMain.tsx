@@ -39,7 +39,8 @@ import {
   AgentStreamPayload,
   ChatMessage,
   DirectLLMStreamEvent,
-  completeChatStreaming
+  completeChatStreaming,
+  extractDocumentReferences
 } from '@app/services/llamaStackService';
 import { ChatbotSourceSettings, ChatbotSourceSettingsModal } from './sourceUpload/ChatbotSourceSettingsModal';
 import { ChatbotSourceUploadPanel } from './sourceUpload/ChatbotSourceUploadPanel';
@@ -401,30 +402,8 @@ const ChatbotMain: React.FunctionComponent = () => {
           
           // Capture document references from tool execution steps
           if (payload.step_details?.step_type === 'tool_execution' && payload.step_details?.tool_responses) {
-            const toolResponses = payload.step_details.tool_responses;
-            for (const response of toolResponses) {
-              if (response.tool_name === 'knowledge_search' && response.content) {
-                // Extract file names from the content
-                const fileNames = new Set<string>();
-                for (const contentItem of response.content) {
-                  if (contentItem.type === 'text' && contentItem.text) {
-                    const text = contentItem.text;
-                    // Look for file names in metadata patterns
-                    const fileNameMatches = text.match(/file_name['"]:\s*['"]([^'"]+)['"]/g);
-                    if (fileNameMatches) {
-                      for (const match of fileNameMatches) {
-                        const fileName = match.replace(/file_name['"]:\s*['"]([^'"]+)['"]/, '$1');
-                        if (fileName && fileName !== 'file_name') {
-                          fileNames.add(fileName);
-                        }
-                      }
-                    }
-                  }
-                }
-                documentReferences = Array.from(fileNames);
-                console.log('Captured document references:', documentReferences);
-              }
-            }
+            documentReferences = extractDocumentReferences(payload.step_details.tool_responses);
+            console.log('Captured document references:', documentReferences);
           }
         } else if (payload.event_type === 'turn_complete') {
           console.log('Agent turn complete event received:', payload.event_type);

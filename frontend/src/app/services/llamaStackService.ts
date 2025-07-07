@@ -77,13 +77,7 @@ export interface AgentStreamPayload {
   };
   step_details?: {
     step_type: string;
-    tool_responses?: Array<{
-      tool_name: string;
-      content?: Array<{
-        type: string;
-        text?: string;
-      }>;
-    }>;
+    tool_responses?: ToolResponse[];
   };
   turn?: {
     output_message?: {
@@ -97,6 +91,15 @@ export interface DirectLLMStreamEvent {
   delta?: {
     text?: string;
   };
+}
+
+// Tool response types for document reference extraction
+export interface ToolResponse {
+  tool_name: string;
+  content?: Array<{
+    type: string;
+    text?: string;
+  }>;
 }
 
 // ============================================================================
@@ -262,6 +265,34 @@ export const getSession = async (agentId: string, sessionId: string): Promise<Ag
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
+
+/**
+ * Extract document references from tool responses
+ * Looks for file names in knowledge search tool responses
+ */
+export const extractDocumentReferences = (toolResponses: ToolResponse[]): string[] => {
+  const fileNames = new Set<string>();
+  
+  for (const response of toolResponses) {
+    if (response.tool_name === 'knowledge_search' && response.content) {
+      for (const contentItem of response.content) {
+        if (contentItem.type === 'text' && contentItem.text) {
+          const fileNameMatches = contentItem.text.match(/file_name['"]:\s*['"]([^'"]+)['"]/g);
+          if (fileNameMatches) {
+            fileNameMatches.forEach(match => {
+              const fileName = match.replace(/file_name['"]:\s*['"]([^'"]+)['"]/, '$1');
+              if (fileName && fileName !== 'file_name') {
+                fileNames.add(fileName);
+              }
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return Array.from(fileNames);
+};
 
 /**
  * Generate a display name for an agent
