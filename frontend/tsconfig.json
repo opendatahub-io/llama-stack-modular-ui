@@ -30,5 +30,5 @@
     "**/*.jsx",
     "**/*.js"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist", "public-cypress", "src/__tests__/cypress"]
 }
