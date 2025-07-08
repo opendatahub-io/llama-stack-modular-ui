@@ -16,12 +16,12 @@ module.exports = {
 
   // A map from regular expressions to module names that allow to stub out resources with a single module
   moduleNameMapper: {
-    '\\.(css|less)$': '<rootDir>/__mocks__/styleMock.js',
-    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': '<rootDir>/__mocks__/fileMock.js',
+    '\\.(css|less)$': '<rootDir>/src/__mocks__/styleMock.js',
+    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': '<rootDir>/src/__mocks__/fileMock.js',
     "@app/(.*)": '<rootDir>/src/app/$1'
   },
 
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/unit/jest.setup.ts'],
 
   transform: {
     '^.+\\.[jt]sx?$': 'babel-jest',
@@ -33,6 +33,8 @@ module.exports = {
 
   // The test environment that will be used for testing.
   testEnvironment: 'jsdom',
+
+  testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],
   
   watchman: false,
 };
