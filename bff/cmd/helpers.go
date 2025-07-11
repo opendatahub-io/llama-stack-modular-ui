@@ -24,6 +24,16 @@ func getEnvAsString(name string, defaultVal string) string {
 	return defaultVal
 }
 
+func getEnvAsBool(name string, defaultVal bool) bool {
+	if value, exists := os.LookupEnv(name); exists {
+		boolValue, err := strconv.ParseBool(value)
+		if err == nil {
+			return boolValue
+		}
+	}
+	return defaultVal
+}
+
 func parseLevel(s string) slog.Level {
 	var level slog.Level
 	err := level.UnmarshalText([]byte(s))

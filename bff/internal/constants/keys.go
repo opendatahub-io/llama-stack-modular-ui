@@ -18,4 +18,7 @@ const (
 
 	TraceIdKey     contextKey = "TraceIdKey"
 	TraceLoggerKey contextKey = "TraceLoggerKey"
+
+	// OAuth related keys
+	AuthTokenKey contextKey = "AuthTokenKey"
 )

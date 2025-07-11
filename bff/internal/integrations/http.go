@@ -4,12 +4,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
-	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/google/uuid"
+	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 )
 
 type HTTPClientInterface interface {

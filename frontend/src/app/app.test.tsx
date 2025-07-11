@@ -1,8 +1,20 @@
-import * as React from 'react';
 import App from '@app/index';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import * as React from 'react';
+
+// Mock the auth service
+jest.mock('./services/authService', () => ({
+  authService: {
+    isAuthenticated: jest.fn(() => false),
+    handleAuthenticationCheck: jest.fn(() => Promise.resolve(true)), // Mock OAuth as disabled (immediate access)
+    loadConfig: jest.fn(() => Promise.resolve({ oauthEnabled: false })),
+    getToken: jest.fn(() => null),
+    clearToken: jest.fn(),
+    addAuthListener: jest.fn(() => jest.fn()), // Return a mock unsubscribe function
+  },
+}));
 
 describe('App tests', () => {
   beforeAll(() => {
@@ -21,16 +33,30 @@ describe('App tests', () => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
-  test('should render default App component', () => {
-    const { asFragment } = render(<App />);
+  test('should render default App component', async () => {
+    let component;
 
-    expect(asFragment()).toMatchSnapshot();
-  });
+    await act(async () => {
+      component = render(<App />);
+    });
 
-  it('should render a nav-toggle button', () => {
-    render(<App />);
+    // Wait for async operations to complete
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Global navigation' })).toBeInTheDocument();
+    });
 
-    expect(screen.getByRole('button', { name: 'Global navigation' })).toBeVisible();
+    expect(component.asFragment()).toMatchSnapshot();
+  }, 7000);
+
+  it('should render a nav-toggle button', async () => {
+    await act(async () => {
+      render(<App />);
+    });
+
+    // Wait for async operations to complete
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Global navigation' })).toBeVisible();
+    });
   });
 
   // I'm fairly sure that this test not going to work properly no matter what we do since JSDOM doesn't actually
@@ -47,9 +73,16 @@ describe('App tests', () => {
   });
 
   it('should expand the sidebar on larger viewports', async () => {
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
-    await React.act(async () => {
+    // Wait for async operations to complete first
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Global navigation' })).toBeInTheDocument();
+    });
+
+    await act(async () => {
       window.dispatchEvent(new Event('resize'));
       await new Promise((r) => setTimeout(r, 0)); // ensure full state flush
     });
@@ -60,9 +93,16 @@ describe('App tests', () => {
   it('should hide the sidebar when clicking the nav-toggle button', async () => {
     const user = userEvent.setup();
 
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
 
-    await React.act(async () => {
+    // Wait for async operations to complete first
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Global navigation' })).toBeInTheDocument();
+    });
+
+    await act(async () => {
       window.dispatchEvent(new Event('resize'));
       await new Promise((resolve) => setTimeout(resolve, 0)); // allow React to process layout updates
     });

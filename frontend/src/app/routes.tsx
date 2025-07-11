@@ -1,7 +1,47 @@
-import * as React from 'react';
+import { Bullseye, Spinner } from '@patternfly/react-core';
+import React, { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { ChatbotMain } from '@app/Chatbot/ChatbotMain';
-import { NotFound } from '@app/NotFound/NotFound';
+import { useAuth } from './contexts/authContext';
+
+const ChatbotMain = lazy(() => import('./Chatbot/ChatbotMain').then(module => ({ default: module.ChatbotMain })));
+const NotFound = lazy(() => import('./NotFound/NotFound'));
+const OAuthCallback = lazy(() => import('./OAuth/OAuthCallback'));
+
+// Protected route wrapper component
+function ProtectedRoute({ children }: { children: React.ReactElement }) {
+  const { isAuthenticated, isLoading, isOAuthEnabled, handleAuthenticationCheck } = useAuth();
+
+  React.useEffect(() => {
+    // Only check authentication if OAuth is enabled and we're not already authenticated
+    if (isOAuthEnabled && !isAuthenticated && !isLoading) {
+      console.log('[ProtectedRoute] OAuth enabled, user not authenticated, triggering auth check');
+      handleAuthenticationCheck().catch(error => {
+        console.error('[ProtectedRoute] Authentication check failed:', error);
+      });
+    }
+  }, [isOAuthEnabled, isAuthenticated, isLoading, handleAuthenticationCheck]);
+
+  // Show loading spinner while checking authentication or OAuth config
+  if (isLoading) {
+    console.log('[ProtectedRoute] Showing loading spinner - isLoading:', isLoading);
+    return <Bullseye><Spinner /></Bullseye>;
+  }
+
+  // If OAuth is disabled, allow access
+  if (isOAuthEnabled === false) {
+    console.log('[ProtectedRoute] OAuth disabled, allowing access');
+    return children;
+  }
+
+  // If OAuth is enabled and user is not authenticated, show spinner while redirecting
+  if (isOAuthEnabled && !isAuthenticated) {
+    console.log('[ProtectedRoute] OAuth enabled, user not authenticated, showing spinner');
+    return <Bullseye><Spinner /></Bullseye>;
+  }
+
+  console.log('[ProtectedRoute] User authenticated, showing protected content');
+  return children;
+}
 
 export interface IAppRoute {
   label?: string; // Excluding the label will exclude the route from the nav sidebar in AppLayout
@@ -12,13 +52,13 @@ export interface IAppRoute {
   path: string;
   title: string;
   routes?: undefined;
+  protected?: boolean; // New field to indicate if route requires authentication
 }
 
 export interface IAppRouteGroup {
   label: string;
   routes: IAppRoute[];
 }
-
 export type AppRouteConfig = IAppRoute | IAppRouteGroup;
 
 const routes: AppRouteConfig[] = [
@@ -28,6 +68,7 @@ const routes: AppRouteConfig[] = [
     label: 'Chatbot',
     path: '/',
     title: 'Chatbot Main Page',
+    protected: true, // This route requires authentication
   },
 ];
 
@@ -36,13 +77,23 @@ const flattenedRoutes: IAppRoute[] = routes.reduce(
   [] as IAppRoute[],
 );
 
-const AppRoutes = (): React.ReactElement => (
-  <Routes>
-    {flattenedRoutes.map(({ path, element }, idx) => (
-      <Route path={path} element={element} key={idx} />
-    ))}
-    <Route element={<NotFound />} />
-  </Routes>
-);
+const AppRoutes = (): React.ReactElement => {
+  return (
+    <Suspense fallback={<Bullseye><Spinner /></Bullseye>}>
+      <Routes>
+        {/* Dynamic routes from flattened routes array */}
+        {flattenedRoutes.map(({ path, element, protected: isProtected }, idx) => (
+          <Route key={idx} path={path} element={isProtected ? <ProtectedRoute>{element}</ProtectedRoute> : element} />
+        ))}
+        {/* Authentication routes */}
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
 
+        {/* Fallback route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
+  );
+};
+
+export default AppRoutes;
 export { AppRoutes, routes };

@@ -3,13 +3,16 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"runtime/debug"
+
 	"github.com/google/uuid"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
 	helper "github.com/opendatahub-io/llama-stack-modular-ui/internal/helpers"
 	"github.com/rs/cors"
-	"log/slog"
-	"net/http"
-	"runtime/debug"
+
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/auth"
 )
 
 func (app *App) RecoverPanic(next http.Handler) http.Handler {
@@ -18,7 +21,8 @@ func (app *App) RecoverPanic(next http.Handler) http.Handler {
 			if err := recover(); err != nil {
 				w.Header().Set("Connection", "close")
 				app.serverErrorResponse(w, r, fmt.Errorf("%s", err))
-				app.logger.Error("Recovered from panic", slog.String("stack_trace", string(debug.Stack())))
+				logger := helper.GetContextLoggerFromReq(r)
+				logger.Error("Recovered from panic", slog.String("stack_trace", string(debug.Stack())))
 			}
 		}()
 
@@ -58,6 +62,32 @@ func (app *App) EnableTelemetry(next http.Handler) http.Handler {
 
 			traceLogger.Debug("Incoming HTTP request", slog.Any("request", helper.RequestLogValuer{Request: r}))
 		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func (app *App) RequireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !app.config.OAuthEnabled {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		token, err := auth.ExtractToken(r)
+		if err != nil {
+			app.forbiddenResponse(w, r, "authentication required")
+			return
+		}
+
+		logger := helper.GetContextLoggerFromReq(r)
+		oauthHandler := auth.NewOAuthHandler(app.config, logger)
+		if err := oauthHandler.ValidateToken(r.Context(), token); err != nil {
+			app.forbiddenResponse(w, r, err.Error())
+			return
+		}
+
+		// Store token in context for downstream use
+		ctx := context.WithValue(r.Context(), constants.AuthTokenKey, token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

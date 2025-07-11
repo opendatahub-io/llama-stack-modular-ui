@@ -1,45 +1,89 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import * as React from 'react';
-import {
-  Alert,
-  AlertActionCloseButton,
-  Button,
-  Drawer,
-  DrawerContent,
-  DrawerContentBody,
-  DropEvent,
-  Label,
-  Select,
-  SelectOption,
-  Spinner,
-  Title,
-} from '@patternfly/react-core';
-import {
-  Chatbot,
-  ChatbotContent,
-  ChatbotDisplayMode,
-  ChatbotFooter,
-  ChatbotFootnote,
-  ChatbotHeader,
-  ChatbotHeaderActions,
-  ChatbotHeaderMain,
-  ChatbotHeaderTitle,
-  ChatbotWelcomePrompt,
-  MessageBar,
-  MessageBox,
-  MessageProps,
-} from '@patternfly/chatbot';
+import { authService } from '@app/services/authService';
+import { CHAT_COMPLETION_URL } from '@app/services/llamaStackService';
 import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
-import { ChatMessage, completeChat } from '@app/services/llamaStackService';
-import { ChatbotSourceSettings, ChatbotSourceSettingsModal } from './sourceUpload/ChatbotSourceSettingsModal';
-import { ChatbotSourceUploadPanel } from './sourceUpload/ChatbotSourceUploadPanel';
 import { getId } from '@app/utils/utils';
+import {
+  Chatbot, ChatbotContent, ChatbotDisplayMode, ChatbotFooter, ChatbotFootnote, ChatbotHeader,
+  ChatbotHeaderActions, ChatbotHeaderMain, ChatbotHeaderTitle, ChatbotWelcomePrompt,
+  MessageBar, MessageBox, MessageProps,
+} from '@patternfly/chatbot';
+import {
+  Alert, AlertActionCloseButton, Button, Drawer, DrawerContent, DrawerContentBody,
+  DropEvent, Label, Select, SelectOption, Spinner, Title
+} from '@patternfly/react-core';
+import * as React from 'react';
+
+// TypeScript interfaces for stream event processing
+type StreamEventDelta = {
+  text?: string;
+};
+
+type StreamEvent = {
+  event_type: 'progress' | 'complete' | 'error';
+  delta?: StreamEventDelta;
+  message?: string;
+  error?: string;
+};
+
+type StreamEventWrapper = {
+  event?: StreamEvent;
+};
+
+// Type guards for runtime validation
+const isValidStreamEventWrapper = (obj: unknown): obj is StreamEventWrapper => {
+  return typeof obj === 'object' && obj !== null;
+};
+
+const isValidStreamEvent = (event: unknown): event is StreamEvent => {
+  if (typeof event !== 'object' || event === null) {
+    console.warn('[ChatBot] Stream event validation failed: not an object or null', event);
+    return false;
+  }
+
+  const e = event as Record<string, unknown>;
+
+  if (typeof e.event_type !== 'string') {
+    console.warn('[ChatBot] Stream event validation failed: event_type is not a string', {
+      event_type: e.event_type,
+      typeof_event_type: typeof e.event_type,
+      full_event: event
+    });
+    return false;
+  }
+
+  if (!['progress', 'complete', 'error'].includes(e.event_type)) {
+    console.warn('[ChatBot] Stream event validation failed: unknown event_type', {
+      event_type: e.event_type,
+      valid_types: ['progress', 'complete', 'error'],
+      full_event: event
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const isProgressEvent = (event: StreamEvent): event is StreamEvent & { event_type: 'progress' } => {
+  return event.event_type === 'progress';
+};
+
+const isCompleteEvent = (event: StreamEvent): event is StreamEvent & { event_type: 'complete' } => {
+  return event.event_type === 'complete';
+};
+
+const isErrorEvent = (event: StreamEvent): event is StreamEvent & { event_type: 'error' } => {
+  return event.event_type === 'error';
+};
+
+import '@patternfly/chatbot/dist/css/main.css';
 import { ShareSquareIcon } from '@patternfly/react-icons';
-import userAvatar from '../bgimages/user_avatar.svg';
 import botAvatar from '../bgimages/bot_avatar.svg';
+import userAvatar from '../bgimages/user_avatar.svg';
 import { ChatbotMessages } from './ChatbotMessagesList';
 import { ChatbotShareModal } from './ChatbotShareModal';
-import '@patternfly/chatbot/dist/css/main.css';
+import { ChatbotSourceSettings, ChatbotSourceSettingsModal } from './sourceUpload/ChatbotSourceSettingsModal';
+import { ChatbotSourceUploadPanel } from './sourceUpload/ChatbotSourceUploadPanel';
 
 const initialBotMessage: MessageProps = {
   id: getId(),
@@ -89,7 +133,7 @@ const ChatbotMain: React.FunctionComponent = () => {
   };
 
   const successAlert = showSuccessAlert ? (
-    <Alert
+    <Alert 
       key={`source-upload-success-${alertKey}`}
       isInline
       variant="success"
@@ -165,7 +209,13 @@ const ChatbotMain: React.FunctionComponent = () => {
   };
 
   const handleMessageSend = async (userInput: string) => {
-    if (!userInput || !selectedModelId) {
+    // Validate user input
+    if (!userInput || userInput.trim().length === 0) {
+      return;
+    }
+
+    // Validate model selection
+    if (!selectedModelId) {
       return;
     }
 
@@ -178,6 +228,8 @@ const ChatbotMain: React.FunctionComponent = () => {
       name: 'User',
       avatar: userAvatar,
     };
+    const assistantMessageId = getId();
+    console.log(`[ChatBot] Created assistant message with ID: ${assistantMessageId}`);
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -185,7 +237,7 @@ const ChatbotMain: React.FunctionComponent = () => {
     setMessages((prev) => [
       ...prev,
       {
-        id: getId(),
+        id: assistantMessageId,
         role: 'bot',
         content: '',
         name: 'Bot',
@@ -197,9 +249,16 @@ const ChatbotMain: React.FunctionComponent = () => {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      const response = await fetch('/api/llama-stack/v1/inference/chat-completion', {
+      // Get authentication token
+      const token = authService.getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(CHAT_COMPLETION_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           messages: updatedMessages.map((msg) => {
             const isAssistant = msg.role === 'bot';
@@ -214,7 +273,6 @@ const ChatbotMain: React.FunctionComponent = () => {
         }),
       });
 
-      clearTimeout(timeoutId);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('No response body');
 
@@ -233,8 +291,9 @@ const ChatbotMain: React.FunctionComponent = () => {
           if (typingQueue.length > 0) {
             const nextChar = typingQueue.shift()!;
             assistantContent += nextChar;
+            // console.log(`[ChatBot] Updating message ${assistantMessageId} with content: "${assistantContent + '▌'}"`);
             setMessages((prev) =>
-              prev.map((msg) => (msg.id === getId() ? { ...msg, content: assistantContent + '▌' } : msg)),
+              prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: assistantContent + '▌' } : msg)),
             );
           } else {
             if (typingIntervalRef.current) {
@@ -245,37 +304,102 @@ const ChatbotMain: React.FunctionComponent = () => {
         }, 10);
       };
 
-      const processStreamEvent = (jsonStr: string) => {
+
+      const processStreamEvent = (jsonStr: string): void => {
+        //  console.log('[ChatBot] Raw stream event received:', jsonStr);
+
         try {
-          const parsed = JSON.parse(jsonStr);
-          if (!parsed || typeof parsed !== 'object') {
-            console.warn('Invalid stream event format:', jsonStr);
+          // Parse JSON with type safety
+          const parsed: unknown = JSON.parse(jsonStr);
+          //  console.log('[ChatBot] Parsed stream event:', parsed);
+
+          // Validate top-level structure
+          if (!isValidStreamEventWrapper(parsed)) {
+            console.warn('[ChatBot] Invalid stream event wrapper structure, skipping event. Expected object with event field, got:', parsed);
             return;
           }
-          const event = parsed.event;
-          if (!event) {
-            console.warn('Received event without event field:', parsed);
+
+          // Check for event field
+          if (!parsed.event) {
+            console.warn('[ChatBot] Stream event missing event field, skipping. Full structure:', parsed);
             return;
           }
-          if (event?.event_type === 'progress' && event.delta?.text) {
-            const deltaText = event.delta?.text || '';
-            typingQueue.push(...deltaText.split(''));
-            startTyping();
-          } else if (event?.event_type === 'complete') {
+
+          //  console.log('[ChatBot] Event field found:', parsed.event);
+
+          // Validate event structure
+          if (!isValidStreamEvent(parsed.event)) {
+            console.warn('[ChatBot] Invalid stream event structure, skipping event. Raw event:', parsed.event);
+            return;
+          }
+
+          const event: StreamEvent = parsed.event;
+          //  console.log('[ChatBot] Valid stream event processed:', event);
+
+          // Process different event types with proper validation
+          if (isProgressEvent(event)) {
+            // Handle progress events
+            if (event.delta?.text && typeof event.delta.text === 'string') {
+              const deltaText = event.delta.text;
+              if (deltaText.length > 0) {
+                typingQueue.push(...deltaText.split(''));
+                startTyping();
+              }
+            } else {
+              // Progress event without text is valid but no-op
+              console.debug('[ChatBot] Progress event received without text content');
+            }
+          } else if (isCompleteEvent(event)) {
+            // Handle completion events
             streamEnded = true;
-            const finalize = () => {
+            // console.debug('[ChatBot] Stream completion event received');
+
+            const finalize = (): void => {
               if (typingQueue.length > 0) {
+                // Wait for typing animation to complete
                 setTimeout(finalize, 20);
               } else {
+                // Remove typing indicator and finalize message
+                //console.log(`[ChatBot] Finalizing message ${assistantMessageId} with final content: "${assistantContent}"`);
                 setMessages((prev) =>
-                  prev.map((msg) => (msg.id === getId() ? { ...msg, content: assistantContent } : msg)),
+                  prev.map((msg) => (msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg)),
                 );
               }
             };
             finalize();
+          } else if (isErrorEvent(event)) {
+            // Handle error events from stream
+            const errorMessage = event.error || event.message || 'Unknown stream error';
+            console.error('[ChatBot] Stream error event received:', errorMessage);
+
+            // Display error to user
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMessageId
+                  ? {
+                    ...msg,
+                    content: `Error during response generation: ${errorMessage}`
+                  }
+                  : msg
+              )
+            );
+            streamEnded = true;
+          } else {
+            // Handle unknown event types gracefully
+            console.warn(`[ChatBot] Unknown stream event type: ${event.event_type}, ignoring`);
           }
-        } catch (e) {
-          console.warn('Failed to parse stream event:', jsonStr, e);
+        } catch (error) {
+          // Enhanced error handling for JSON parsing
+          if (error instanceof SyntaxError) {
+            console.warn('[ChatBot] Failed to parse stream event JSON:', error.message, 'Raw JSON:', jsonStr);
+          } else if (error instanceof Error) {
+            console.warn('[ChatBot] Error processing stream event:', error.message, 'Raw JSON:', jsonStr);
+          } else {
+            console.warn('[ChatBot] Unknown error processing stream event:', error, 'Raw JSON:', jsonStr);
+          }
+
+          // Don't break the stream for individual event parsing errors
+          // The stream will continue processing other events
         }
       };
 
@@ -314,6 +438,7 @@ const ChatbotMain: React.FunctionComponent = () => {
         },
       ]);
     } finally {
+      clearTimeout(timeoutId);
       setIsMessageSendButtonDisabled(false);
     }
   };

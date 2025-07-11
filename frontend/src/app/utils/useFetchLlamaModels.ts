@@ -6,28 +6,39 @@ const useFetchLlamaModels = (): {
   models: LlamaModel[];
   loading: boolean;
   error: string | null;
+  isPermissionError: boolean;
   fetchLlamaModels: () => Promise<void>;
 } => {
   const [models, setModels] = React.useState<LlamaModel[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [isPermissionError, setIsPermissionError] = React.useState(false);
 
   const fetchLlamaModels = React.useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setIsPermissionError(false);
 
       const modelList: LlamaModel[] = await listModels();
 
       setModels(modelList);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch models');
+      const isPermissionError = (err as any)?.status === 401 || (err as any)?.status === 403;
+      
+      if (isPermissionError) {
+        setIsPermissionError(true);
+        setError(err instanceof Error ? err.message : 'Permission denied');
+      } else {
+        setIsPermissionError(false);
+        setError(err instanceof Error ? err.message : 'Failed to fetch models');
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
-  return { models, loading, error, fetchLlamaModels };
+  return { models, loading, error, isPermissionError, fetchLlamaModels };
 };
 
 export default useFetchLlamaModels;
