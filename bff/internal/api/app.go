@@ -93,18 +93,10 @@ func (app *App) Routes() http.Handler {
 	//file server for the frontend file and SPA routes
 	staticDir := http.Dir(app.config.StaticAssetsDir)
 	fileServer := http.FileServer(staticDir)
-
-	// Handle assets directory explicitly
-	//appMux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir(path.Join(app.config.StaticAssetsDir, "assets")))))
-
+	
 	// Handle root and other paths
 	appMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ctxLogger := helper.GetContextLoggerFromReq(r)
-
-		// Log all incoming requests to help debug
-		ctxLogger.Debug("Received request",
-			slog.String("path", r.URL.Path),
-			slog.String("method", r.Method))
 
 		// Check if the requested file exists
 		if _, err := staticDir.Open(r.URL.Path); err == nil {
