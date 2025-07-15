@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/julienschmidt/httprouter"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -31,7 +33,6 @@ func (app *App) RecoverPanic(next http.Handler) http.Handler {
 }
 
 func (app *App) EnableCORS(next http.Handler) http.Handler {
-	fmt.Println("EnableCORS")
 	if len(app.config.AllowedOrigins) == 0 {
 		// CORS is disabled, this middleware becomes a noop.
 		return next
@@ -41,7 +42,7 @@ func (app *App) EnableCORS(next http.Handler) http.Handler {
 		AllowedOrigins:     app.config.AllowedOrigins,
 		AllowCredentials:   true,
 		AllowedMethods:     []string{"GET", "PUT", "POST", "PATCH", "DELETE"},
-		AllowedHeaders:     []string{constants.KubeflowUserIDHeader, constants.KubeflowUserGroupsIdHeader},
+		AllowedHeaders:     []string{},
 		Debug:              app.config.LogLevel == slog.LevelDebug,
 		OptionsPassthrough: false,
 	})
@@ -90,4 +91,83 @@ func (app *App) RequireAuth(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), constants.AuthTokenKey, token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (app *App) RequireAuthRoute(next func(http.ResponseWriter, *http.Request, httprouter.Params)) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		if !app.config.OAuthEnabled {
+			next(w, r, ps)
+			return
+		}
+		token, err := auth.ExtractToken(r)
+		if err != nil {
+			app.forbiddenResponse(w, r, "authentication required")
+			return
+		}
+
+		logger := helper.GetContextLoggerFromReq(r)
+		oauthHandler := auth.NewOAuthHandler(app.config, logger)
+		if err := oauthHandler.ValidateToken(r.Context(), token); err != nil {
+			app.forbiddenResponse(w, r, err.Error())
+			return
+		}
+
+		// Store token in context for downstream use
+		ctx := context.WithValue(r.Context(), constants.AuthTokenKey, token)
+		next(w, r.WithContext(ctx), ps)
+	}
+}
+
+func (app *App) AttachRESTClient(next func(http.ResponseWriter, *http.Request, httprouter.Params)) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+		//modelRegistryID := ps.ByName(ModelRegistryId)
+		//
+		//namespace, ok := r.Context().Value(constants.NamespaceHeaderParameterKey).(string)
+		//if !ok || namespace == "" {
+		//	app.badRequestResponse(w, r, fmt.Errorf("missing namespace in the context"))
+		//}
+
+		//client, err := app.kubernetesClientFactory.GetClient(r.Context())
+		//if err != nil {
+		//	app.serverErrorResponse(w, r, fmt.Errorf("failed to get Kubernetes client: %w", err))
+		//	return
+		//}
+		//
+		//modelRegistry, err := app.repositories.ModelRegistry.GetModelRegistry(r.Context(), client, namespace, modelRegistryID)
+		//if err != nil {
+		//	app.notFoundResponse(w, r)
+		//	return
+		//}
+		//modelRegistryBaseURL := modelRegistry.ServerAddress
+		//
+		//// If we are in dev mode, we need to resolve the server address to the local host
+		//// to allow the client to connect to the model registry via port forwarded from the cluster to the local machine.
+		//if app.config.DevMode {
+		//	modelRegistryBaseURL = app.repositories.ModelRegistry.ResolveServerAddress("localhost", int32(app.config.DevModePort))
+		//}
+
+		// Set up a child logger for the rest client that automatically adds the request id to all statements for
+		// tracing.
+		restClientLogger := app.logger
+		if app.logger != nil {
+			traceId, ok := r.Context().Value(constants.TraceIdKey).(string)
+			if ok {
+				restClientLogger = app.logger.With(slog.String("trace_id", traceId))
+			} else {
+				app.logger.Warn("Failed to set trace_id for tracing")
+			}
+		}
+
+		baseUrl := app.config.LlamaStackURL
+
+		restHttpClient, err := integrations.NewHTTPClient(restClientLogger, baseUrl)
+
+		if err != nil {
+			app.serverErrorResponse(w, r, fmt.Errorf("failed to create http client: %v", err))
+			return
+		}
+		ctx := context.WithValue(r.Context(), constants.LlamaStackHttpClientKey, restHttpClient)
+		next(w, r.WithContext(ctx), ps)
+	}
 }
