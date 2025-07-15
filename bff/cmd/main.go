@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-	fmt.Println("BFF v7")
 	var cfg config.EnvConfig
 	flag.IntVar(&cfg.Port, "port", getEnvAsInt("PORT", 8080), "API server port")
 	flag.StringVar(&cfg.StaticAssetsDir, "static-assets-dir", "./static", "Configure frontend static assets root directory")
