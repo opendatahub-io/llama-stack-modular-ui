@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/mocks"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/repositories"
 	"log/slog"
 	"net/http"
@@ -33,6 +34,9 @@ type App struct {
 }
 
 func NewApp(cfg config.EnvConfig, logger *slog.Logger) (*App, error) {
+	var lsClient repositories.LlamaStackClientInterface
+	var err error
+
 	logger.Info("Initializing app with config", slog.Any("config", cfg))
 
 	// Validate OAuth configuration
@@ -54,9 +58,11 @@ func NewApp(cfg config.EnvConfig, logger *slog.Logger) (*App, error) {
 			slog.String("openshift_api_server_url", cfg.OpenShiftApiServerUrl))
 	}
 
-	var lsClient repositories.LlamaStackClientInterface
-
-	lsClient, err := repositories.NewLlamaStackClient()
+	if cfg.MockLSClient {
+		lsClient, err = mocks.NewLlamastackClientMock()
+	} else {
+		lsClient, err = repositories.NewLlamaStackClient()
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create llama stack client: %w", err)
