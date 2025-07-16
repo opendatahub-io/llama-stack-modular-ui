@@ -1,5 +1,14 @@
-import React, { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { authService } from '../services/authService';
+/* eslint-disable no-console */
+import React, {
+  ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { authService } from '@app/services/authService';
 
 // Auth context types
 interface AuthContextType {
@@ -53,18 +62,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return unsubscribe;
   }, []);
 
-  const contextValue: AuthContextType = {
-    isAuthenticated,
-    isLoading,
-    isOAuthEnabled,
-    handleAuthenticationCheck,
-  };
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+  const contextValue: AuthContextType = useMemo(
+    () => ({
+      isAuthenticated,
+      isLoading,
+      isOAuthEnabled,
+      handleAuthenticationCheck,
+    }),
+    [isAuthenticated, isLoading, isOAuthEnabled, handleAuthenticationCheck],
   );
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook to use auth context
@@ -74,4 +82,4 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};

@@ -1,5 +1,12 @@
 import React from 'react';
-import { Button, ClipboardCopy, Modal, ModalBody, ModalHeader, ModalVariant } from '@patternfly/react-core';
+import {
+  Button,
+  ClipboardCopy,
+  Modal,
+  ModalBody,
+  ModalHeader,
+  ModalVariant,
+} from '@patternfly/react-core';
 import { ExternalLinkSquareAltIcon } from '@patternfly/react-icons';
 
 type ChatbotShareModalProps = {

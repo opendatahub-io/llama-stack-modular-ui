@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { Model as LlamaModel } from 'llama-stack-client/resources/models';
-import { listModels } from '../services/llamaStackService';
+import { listModels } from '@app/services/llamaStackService';
 
 const useFetchLlamaModels = (): {
   models: LlamaModel[];
@@ -24,9 +24,10 @@ const useFetchLlamaModels = (): {
 
       setModels(modelList);
     } catch (err) {
-      const isPermissionError = (err as any)?.status === 401 || (err as any)?.status === 403;
-      
-      if (isPermissionError) {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+      const isError = (err as any)?.status === 401 || (err as any)?.status === 403;
+
+      if (isError) {
         setIsPermissionError(true);
         setError(err instanceof Error ? err.message : 'Permission denied');
       } else {

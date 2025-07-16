@@ -45,13 +45,17 @@ const MODEL_OPTIONS = [
   { value: 'Model 3', label: 'Model 3' },
 ];
 
-const ChatbotSourceSettingsModal: React.FC<ChatbotSourceSettingsModalProps> = ({ onToggle, onSubmitSettings }) => {
+const ChatbotSourceSettingsModal: React.FC<ChatbotSourceSettingsModalProps> = ({
+  onToggle,
+  onSubmitSettings,
+}) => {
   const [fields, setFields] = React.useState<ChatbotSourceSettings>(DEFAULT_SOURCE_SETTINGS);
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const maxChunkLengthLabelHelpRef = React.useRef(null);
   const sourceSettingsHelpRef = React.useRef(null);
 
   const handleInputChange = (event: React.FormEvent<HTMLInputElement>, value: string) => {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const { name } = event.target as HTMLInputElement;
     setFields((prev) => ({
       ...prev,
@@ -65,7 +69,9 @@ const ChatbotSourceSettingsModal: React.FC<ChatbotSourceSettingsModalProps> = ({
 
   const onFocus = () => {
     const element = document.getElementById('modal-dropdown-toggle');
-    if (element) element.focus();
+    if (element) {
+      element.focus();
+    }
   };
 
   const onSourceSelect = (value: string) => {
@@ -110,6 +116,7 @@ const ChatbotSourceSettingsModal: React.FC<ChatbotSourceSettingsModalProps> = ({
           <FormGroup fieldId="source-settings-form-embeddingModel">
             <Dropdown
               isOpen={isDropdownOpen}
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
               onSelect={(_, value) => onSourceSelect(value as string)}
               onOpenChange={(isOpen: boolean) => setIsDropdownOpen(isOpen)}
               toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
@@ -148,9 +155,14 @@ const ChatbotSourceSettingsModal: React.FC<ChatbotSourceSettingsModalProps> = ({
               <Popover
                 triggerRef={maxChunkLengthLabelHelpRef}
                 headerContent={<div>Maximum chunk length</div>}
-                bodyContent={<div>The maximum length of a chunk of text to be used for embedding.</div>}
+                bodyContent={
+                  <div>The maximum length of a chunk of text to be used for embedding.</div>
+                }
               >
-                <FormGroupLabelHelp ref={maxChunkLengthLabelHelpRef} aria-label="More info for maximum chunk length" />
+                <FormGroupLabelHelp
+                  ref={maxChunkLengthLabelHelpRef}
+                  aria-label="More info for maximum chunk length"
+                />
               </Popover>
             }
             isRequired

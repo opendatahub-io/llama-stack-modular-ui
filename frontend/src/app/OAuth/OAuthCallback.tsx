@@ -1,7 +1,7 @@
 import { Spinner } from '@patternfly/react-core';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { authService } from '../services/authService';
+import { authService } from '@app/services/authService';
 
 const OAuthCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +33,7 @@ const OAuthCallback: React.FC = () => {
         window.location.href = '/';
       } catch (err) {
         setError('Failed to authenticate');
+        // eslint-disable-next-line no-console
         console.error('Authentication error:', err);
       }
     };
@@ -57,4 +58,4 @@ const OAuthCallback: React.FC = () => {
   );
 };
 
-export default OAuthCallback; 
+export default OAuthCallback;

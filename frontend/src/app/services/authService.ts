@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable camelcase */
+/* eslint-disable no-console */
 import axios from 'axios';
 
 export type OAuthConfig = {
@@ -27,14 +30,14 @@ class AuthService {
     this.listeners.push(listener);
     // Return unsubscribe function
     return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
+      this.listeners = this.listeners.filter((l) => l !== listener);
     };
   }
 
   // Notify all listeners of auth state change
   private notifyListeners() {
     const isAuthenticated = this.isAuthenticated();
-    this.listeners.forEach(listener => listener(isAuthenticated));
+    this.listeners.forEach((listener) => listener(isAuthenticated));
   }
 
   async loadConfig(): Promise<OAuthConfig> {
@@ -65,7 +68,7 @@ class AuthService {
 
   async handleAuthenticationCheck(): Promise<boolean> {
     const config = await this.loadConfig();
-    
+
     // If OAuth is disabled, user always has access
     if (!config.oauthEnabled) {
       console.log('[Frontend] OAuth is disabled, allowing access');
@@ -113,14 +116,14 @@ class AuthService {
   async handleCallback(code: string, state?: string): Promise<void> {
     try {
       console.log('[Frontend] handleCallback: exchanging code for token', code);
-      
+
       if (!state) {
         throw new Error('OAuth state parameter is missing');
       }
-      
-      const response = await axios.post('/api/v1/auth/callback', { 
-        code, 
-        state 
+
+      const response = await axios.post('/api/v1/auth/callback', {
+        code,
+        state,
       });
       const { access_token } = response.data;
       if (this.isDevelopment) {
@@ -137,28 +140,35 @@ class AuthService {
   async initiateLogin() {
     const config = await this.loadConfig();
     const { oauthClientId, oauthRedirectUri, oauthServerUrl } = config;
-    
+
     // Validate all required config values
-    if (!oauthClientId) throw new Error('OAuth client ID is missing');
-    if (!oauthRedirectUri) throw new Error('OAuth redirect URI is missing');
-    if (!oauthServerUrl) throw new Error('OAuth server URL is missing');
-    
+    if (!oauthClientId) {
+      throw new Error('OAuth client ID is missing');
+    }
+    if (!oauthRedirectUri) {
+      throw new Error('OAuth redirect URI is missing');
+    }
+    if (!oauthServerUrl) {
+      throw new Error('OAuth server URL is missing');
+    }
+
     console.log('[Frontend] OAuth config:', {
       oauthClientId,
       oauthRedirectUri,
-      oauthServerUrl: oauthServerUrl
+      oauthServerUrl,
     });
-    
+
     // Get state parameter from backend
     const stateResponse = await axios.get('/api/v1/auth/state');
     const { state } = stateResponse.data;
-    
+
     if (!state) {
       throw new Error('Failed to get OAuth state parameter');
     }
-    
+
     localStorage.setItem('oauth_state', state);
-    const authUrl = `${oauthServerUrl}/oauth/authorize?` +
+    const authUrl =
+      `${oauthServerUrl}/oauth/authorize?` +
       `response_type=code&` +
       `client_id=${encodeURIComponent(oauthClientId)}&` +
       `redirect_uri=${encodeURIComponent(oauthRedirectUri)}&` +
@@ -175,4 +185,4 @@ class AuthService {
   }
 }
 
-export const authService = new AuthService(); 
+export const authService = new AuthService();
