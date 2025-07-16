@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import React, {
   ReactNode,
   createContext,
@@ -27,12 +26,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isOAuthEnabled, setIsOAuthEnabled] = useState<boolean | null>(null);
 
   const handleAuthenticationCheck = useCallback(async (): Promise<boolean> => {
-    console.log('[AuthContext] handleAuthenticationCheck called');
     try {
       const result = await authService.handleAuthenticationCheck();
-      console.log('[AuthContext] handleAuthenticationCheck result:', result);
       return result;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[AuthProvider] Authentication check failed:', error);
       return false;
     }
@@ -45,6 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const config = await authService.loadConfig();
         setIsOAuthEnabled(config.oauthEnabled);
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('[AuthProvider] Failed to load OAuth config:', error);
         setIsOAuthEnabled(false);
       } finally {

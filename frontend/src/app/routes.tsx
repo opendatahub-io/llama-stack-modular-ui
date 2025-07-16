@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { Bullseye, Spinner } from '@patternfly/react-core';
 import React, { Suspense, lazy } from 'react';
 import { Route, Routes } from 'react-router-dom';
@@ -17,8 +16,8 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
   React.useEffect(() => {
     // Only check authentication if OAuth is enabled and we're not already authenticated
     if (isOAuthEnabled && !isAuthenticated && !isLoading) {
-      console.log('[ProtectedRoute] OAuth enabled, user not authenticated, triggering auth check');
       handleAuthenticationCheck().catch((error) => {
+        // eslint-disable-next-line no-console
         console.error('[ProtectedRoute] Authentication check failed:', error);
       });
     }
@@ -26,7 +25,6 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
 
   // Show loading spinner while checking authentication or OAuth config
   if (isLoading) {
-    console.log('[ProtectedRoute] Showing loading spinner - isLoading:', isLoading);
     return (
       <Bullseye>
         <Spinner />
@@ -36,13 +34,11 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
 
   // If OAuth is disabled, allow access
   if (isOAuthEnabled === false) {
-    console.log('[ProtectedRoute] OAuth disabled, allowing access');
     return children;
   }
 
   // If OAuth is enabled and user is not authenticated, show spinner while redirecting
   if (isOAuthEnabled && !isAuthenticated) {
-    console.log('[ProtectedRoute] OAuth enabled, user not authenticated, showing spinner');
     return (
       <Bullseye>
         <Spinner />
@@ -50,7 +46,6 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
     );
   }
 
-  console.log('[ProtectedRoute] User authenticated, showing protected content');
   return children;
 }
 

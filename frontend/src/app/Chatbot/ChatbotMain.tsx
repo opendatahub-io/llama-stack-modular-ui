@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /* eslint-disable camelcase */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import * as React from 'react';
@@ -257,7 +256,6 @@ const ChatbotMain: React.FunctionComponent = () => {
       avatar: userAvatar,
     };
     const assistantMessageId = getId();
-    console.log(`[ChatBot] Created assistant message with ID: ${assistantMessageId}`);
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -325,7 +323,6 @@ const ChatbotMain: React.FunctionComponent = () => {
           if (typingQueue.length > 0) {
             const nextChar = typingQueue.shift()!;
             assistantContent += nextChar;
-            // console.log(`[ChatBot] Updating message ${assistantMessageId} with content: "${assistantContent + '▌'}"`);
             setMessages((prev) =>
               prev.map((msg) =>
                 // eslint-disable-next-line prefer-template
@@ -340,15 +337,13 @@ const ChatbotMain: React.FunctionComponent = () => {
       };
 
       const processStreamEvent = (jsonStr: string): void => {
-        //  console.log('[ChatBot] Raw stream event received:', jsonStr);
-
         try {
           // Parse JSON with type safety
           const parsed: unknown = JSON.parse(jsonStr);
-          //  console.log('[ChatBot] Parsed stream event:', parsed);
 
           // Validate top-level structure
           if (!isValidStreamEventWrapper(parsed)) {
+            // eslint-disable-next-line no-console
             console.warn(
               '[ChatBot] Invalid stream event wrapper structure, skipping event. Expected object with event field, got:',
               parsed,
@@ -358,6 +353,7 @@ const ChatbotMain: React.FunctionComponent = () => {
 
           // Check for event field
           if (!parsed.event) {
+            // eslint-disable-next-line no-console
             console.warn(
               '[ChatBot] Stream event missing event field, skipping. Full structure:',
               parsed,
@@ -365,10 +361,9 @@ const ChatbotMain: React.FunctionComponent = () => {
             return;
           }
 
-          //  console.log('[ChatBot] Event field found:', parsed.event);
-
           // Validate event structure
           if (!isValidStreamEvent(parsed.event)) {
+            // eslint-disable-next-line no-console
             console.warn(
               '[ChatBot] Invalid stream event structure, skipping event. Raw event:',
               parsed.event,
@@ -377,7 +372,6 @@ const ChatbotMain: React.FunctionComponent = () => {
           }
 
           const { event } = parsed;
-          //  console.log('[ChatBot] Valid stream event processed:', event);
 
           // Process different event types with proper validation
           if (isProgressEvent(event)) {
@@ -390,6 +384,7 @@ const ChatbotMain: React.FunctionComponent = () => {
               }
             } else {
               // Progress event without text is valid but no-op
+              // eslint-disable-next-line no-console
               console.debug('[ChatBot] Progress event received without text content');
             }
           } else if (isCompleteEvent(event)) {
@@ -403,7 +398,7 @@ const ChatbotMain: React.FunctionComponent = () => {
                 setTimeout(finalize, 20);
               } else {
                 // Remove typing indicator and finalize message
-                //console.log(`[ChatBot] Finalizing message ${assistantMessageId} with final content: "${assistantContent}"`);
+
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMessageId ? { ...msg, content: assistantContent } : msg,
@@ -415,6 +410,7 @@ const ChatbotMain: React.FunctionComponent = () => {
           } else if (isErrorEvent(event)) {
             // Handle error events from stream
             const errorMessage = event.error || event.message || 'Unknown stream error';
+            // eslint-disable-next-line no-console
             console.error('[ChatBot] Stream error event received:', errorMessage);
 
             // Display error to user
@@ -431,11 +427,13 @@ const ChatbotMain: React.FunctionComponent = () => {
             streamEnded = true;
           } else {
             // Handle unknown event types gracefully
+            // eslint-disable-next-line no-console
             console.warn(`[ChatBot] Unknown stream event type: ${event.event_type}, ignoring`);
           }
         } catch (err) {
           // Enhanced error handling for JSON parsing
           if (err instanceof SyntaxError) {
+            // eslint-disable-next-line no-console
             console.warn(
               '[ChatBot] Failed to parse stream event JSON:',
               err.message,
@@ -443,6 +441,7 @@ const ChatbotMain: React.FunctionComponent = () => {
               jsonStr,
             );
           } else if (err instanceof Error) {
+            // eslint-disable-next-line no-console
             console.warn(
               '[ChatBot] Error processing stream event:',
               err.message,
@@ -450,6 +449,7 @@ const ChatbotMain: React.FunctionComponent = () => {
               jsonStr,
             );
           } else {
+            // eslint-disable-next-line no-console
             console.warn(
               '[ChatBot] Unknown error processing stream event:',
               err,
