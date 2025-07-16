@@ -49,6 +49,12 @@ npm run clean
 
 # Generate a webpack bundle profile
 npm run build:bundle-profile
+
+# Starts the bff backend for cypress tests
+npm run cypress:server
+
+# Runs cypress end-to-end tests in CI mode
+npm run test:cypress-ci
 ```
 
 ## Configurations
