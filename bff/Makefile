@@ -1,9 +1,4 @@
 PORT ?= 8080
-#MOCK_K8S_CLIENT ?= false
-#MOCK_MR_CLIENT ?= false
-#DEV_MODE ?= false
-#DEV_MODE_PORT ?= 8080
-#STANDALONE_MODE ?= true
 #frontend static assets root directory
 STATIC_ASSETS_DIR ?= ./static
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -11,6 +6,7 @@ ENVTEST_K8S_VERSION = 1.29.0
 LOG_LEVEL ?= debug
 ALLOWED_ORIGINS ?= ""
 LLAMA_STACK_URL ?= ""
+MOCK_LS_CLIENT ?= false
 
 .PHONY: all
 all: build
@@ -51,7 +47,7 @@ build: fmt vet test ## Builds the project to produce a binary executable.
 .PHONY: run
 run: fmt vet envtest ## Runs the project.
 	ENVTEST_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
-	go run ./cmd --port=$(PORT) --static-assets-dir=$(STATIC_ASSETS_DIR) --log-level=$(LOG_LEVEL) --allowed-origins=$(ALLOWED_ORIGINS) --llama-stack-url=$(LLAMA_STACK_URL)
+	go run ./cmd --port=$(PORT) --static-assets-dir=$(STATIC_ASSETS_DIR) --log-level=$(LOG_LEVEL) --allowed-origins=$(ALLOWED_ORIGINS) --llama-stack-url=$(LLAMA_STACK_URL) --mock-ls-client=$(MOCK_LS_CLIENT)
 
 ##@ Dependencies
 
