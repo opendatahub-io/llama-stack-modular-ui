@@ -120,33 +120,6 @@ func (app *App) RequireAuthRoute(next func(http.ResponseWriter, *http.Request, h
 
 func (app *App) AttachRESTClient(next func(http.ResponseWriter, *http.Request, httprouter.Params)) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-
-		//modelRegistryID := ps.ByName(ModelRegistryId)
-		//
-		//namespace, ok := r.Context().Value(constants.NamespaceHeaderParameterKey).(string)
-		//if !ok || namespace == "" {
-		//	app.badRequestResponse(w, r, fmt.Errorf("missing namespace in the context"))
-		//}
-
-		//client, err := app.kubernetesClientFactory.GetClient(r.Context())
-		//if err != nil {
-		//	app.serverErrorResponse(w, r, fmt.Errorf("failed to get Kubernetes client: %w", err))
-		//	return
-		//}
-		//
-		//modelRegistry, err := app.repositories.ModelRegistry.GetModelRegistry(r.Context(), client, namespace, modelRegistryID)
-		//if err != nil {
-		//	app.notFoundResponse(w, r)
-		//	return
-		//}
-		//modelRegistryBaseURL := modelRegistry.ServerAddress
-		//
-		//// If we are in dev mode, we need to resolve the server address to the local host
-		//// to allow the client to connect to the model registry via port forwarded from the cluster to the local machine.
-		//if app.config.DevMode {
-		//	modelRegistryBaseURL = app.repositories.ModelRegistry.ResolveServerAddress("localhost", int32(app.config.DevModePort))
-		//}
-
 		// Set up a child logger for the rest client that automatically adds the request id to all statements for
 		// tracing.
 		restClientLogger := app.logger
