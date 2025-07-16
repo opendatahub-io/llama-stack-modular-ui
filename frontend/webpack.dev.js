@@ -6,6 +6,10 @@ const common = require('./webpack.common.js');
 const { stylePaths } = require('./stylePaths');
 const HOST = process.env.HOST || 'localhost';
 const PORT = process.env.PORT || '9000';
+const PROXY_HOST = process.env.PROXY_HOST || 'localhost';
+const PROXY_PROTOCOL = process.env.PROXY_PROTOCOL || 'http';
+const PROXY_PORT = process.env.PROXY_PORT || '8080';
+const DEPLOYMENT_MODE = process.env.DEPLOYMENT_MODE || 'standalone';
 
 module.exports = merge(common('development'), {
   mode: 'development',
@@ -21,5 +25,21 @@ module.exports = merge(common('development'), {
     client: {
       overlay: true,
     },
+    proxy: [
+      {
+        context: ['/api', '/api/llama-stack'],
+        target: {
+          host: PROXY_HOST,
+          port: PROXY_PORT,
+          protocol: PROXY_PROTOCOL,
+        },
+        changeOrigin: true,
+        ...(DEPLOYMENT_MODE === 'standalone' && {
+          headers: {
+            'kubeflow-userid': 'user@example.com',
+          },
+        }),
+      },
+    ],
   },
 });
