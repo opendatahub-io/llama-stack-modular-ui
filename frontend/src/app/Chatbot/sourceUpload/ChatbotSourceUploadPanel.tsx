@@ -9,8 +9,8 @@ import {
   MultipleFileUploadStatusItem,
   Title,
 } from '@patternfly/react-core';
-import { ChatbotSourceSettings } from './ChatbotSourceSettingsModal';
 import { FileIcon } from '@patternfly/react-icons';
+import { ChatbotSourceSettings } from './ChatbotSourceSettingsModal';
 
 type ChatbotSourceUploadPanelProps = {
   alert?: React.ReactElement;
@@ -29,12 +29,15 @@ const ChatbotSourceUploadPanel: React.FC<ChatbotSourceUploadPanelProps> = ({
   removeUploadedSource,
   setSelectedSourceSettings,
 }) => (
-  <DrawerPanelContent isResizable={true} defaultSize={'400px'} minSize={'300px'}>
+  <DrawerPanelContent isResizable defaultSize="400px" minSize="300px">
     <AlertGroup hasAnimations isToast isLiveRegion>
       {alert}
     </AlertGroup>
     <DrawerPanelBody>
-      <Title headingLevel="h5" style={{ fontWeight: 'bold', marginBottom: 'var(--pf-t--global--spacer--2xl)' }}>
+      <Title
+        headingLevel="h5"
+        style={{ fontWeight: 'bold', marginBottom: 'var(--pf-t--global--spacer--2xl)' }}
+      >
         Sources
       </Title>
       <MultipleFileUpload
@@ -49,7 +52,7 @@ const ChatbotSourceUploadPanel: React.FC<ChatbotSourceUploadPanelProps> = ({
         aria-label="Source upload area"
       >
         <MultipleFileUploadMain
-          browseButtonText={'Add'}
+          browseButtonText="Add"
           titleIcon={<FileIcon />}
           titleText="Drag and drop file here"
           titleTextSeparator="or"

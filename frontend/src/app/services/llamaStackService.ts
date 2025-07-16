@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import type { Model as LlamaModel } from 'llama-stack-client/resources/models';
-import axios from '../utils/axios';
+import axios from '@app/utils/axios';
 import { authService } from './authService';
 
 // API URL constants
@@ -26,11 +26,14 @@ export const listModels = (): Promise<LlamaModel[]> => {
     .catch((e) => {
       // Handle 401/403 errors specifically - user is authenticated but doesn't have access
       if (e.response?.status === 401 || e.response?.status === 403) {
-        const error = new Error('You are authenticated but do not have permission to access models. Please contact your administrator for access.');
+        const error = new Error(
+          'You are authenticated but do not have permission to access models. Please contact your administrator for access.',
+        );
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
         (error as any).status = e.response?.status;
         throw error;
       }
-      
+
       const errorMessage = e.response?.data?.message || e.message || 'Failed to fetch models';
       throw new Error(errorMessage);
     });

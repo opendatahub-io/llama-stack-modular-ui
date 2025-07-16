@@ -1,4 +1,8 @@
-import { checkAppLoaded, visitApp, waitForPageLoad } from '../../support/commands/common';
+import {
+  checkAppLoaded,
+  visitApp,
+  waitForPageLoad,
+} from '~/src/__tests__/cypress/support/commands/common';
 
 describe('App Tests', () => {
   beforeEach(() => {

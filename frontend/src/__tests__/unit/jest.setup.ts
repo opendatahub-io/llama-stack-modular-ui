@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { TextDecoder, TextEncoder } from 'util';
 
 global.TextEncoder = global.TextEncoder || TextEncoder;

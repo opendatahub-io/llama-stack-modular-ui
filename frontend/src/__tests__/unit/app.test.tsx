@@ -1,9 +1,8 @@
 import * as React from 'react';
-import App from '@app/index';
 import '@testing-library/jest-dom';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
+import App from '@app/index';
 
 // Mock the auth service
 jest.mock('../../app/services/authService.ts', () => ({
@@ -85,6 +84,7 @@ describe('App tests', () => {
 
     await act(async () => {
       window.dispatchEvent(new Event('resize'));
+      // eslint-disable-next-line no-promise-executor-return
       await new Promise((r) => setTimeout(r, 0)); // ensure full state flush
     });
 
@@ -105,6 +105,7 @@ describe('App tests', () => {
 
     await act(async () => {
       window.dispatchEvent(new Event('resize'));
+      // eslint-disable-next-line no-promise-executor-return
       await new Promise((resolve) => setTimeout(resolve, 0)); // allow React to process layout updates
     });
 

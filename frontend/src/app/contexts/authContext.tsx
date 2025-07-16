@@ -1,5 +1,13 @@
-import React, { ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { authService } from '../services/authService';
+import React, {
+  ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { authService } from '@app/services/authService';
 
 // Auth context types
 interface AuthContextType {
@@ -18,12 +26,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isOAuthEnabled, setIsOAuthEnabled] = useState<boolean | null>(null);
 
   const handleAuthenticationCheck = useCallback(async (): Promise<boolean> => {
-    console.log('[AuthContext] handleAuthenticationCheck called');
     try {
       const result = await authService.handleAuthenticationCheck();
-      console.log('[AuthContext] handleAuthenticationCheck result:', result);
       return result;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[AuthProvider] Authentication check failed:', error);
       return false;
     }
@@ -36,6 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const config = await authService.loadConfig();
         setIsOAuthEnabled(config.oauthEnabled);
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('[AuthProvider] Failed to load OAuth config:', error);
         setIsOAuthEnabled(false);
       } finally {
@@ -53,18 +61,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return unsubscribe;
   }, []);
 
-  const contextValue: AuthContextType = {
-    isAuthenticated,
-    isLoading,
-    isOAuthEnabled,
-    handleAuthenticationCheck,
-  };
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+  const contextValue: AuthContextType = useMemo(
+    () => ({
+      isAuthenticated,
+      isLoading,
+      isOAuthEnabled,
+      handleAuthenticationCheck,
+    }),
+    [isAuthenticated, isLoading, isOAuthEnabled, handleAuthenticationCheck],
   );
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook to use auth context
@@ -74,4 +81,4 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};
