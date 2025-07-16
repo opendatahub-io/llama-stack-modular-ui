@@ -27,18 +27,13 @@ module.exports = merge(common('development'), {
     },
     proxy: [
       {
-        context: ['/api', '/api/llama-stack'],
+        context: ['/api'],
         target: {
           host: PROXY_HOST,
           port: PROXY_PORT,
           protocol: PROXY_PROTOCOL,
         },
         changeOrigin: true,
-        ...(DEPLOYMENT_MODE === 'standalone' && {
-          headers: {
-            'kubeflow-userid': 'user@example.com',
-          },
-        }),
       },
     ],
   },
