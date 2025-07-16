@@ -95,6 +95,15 @@ make run STATIC_ASSETS_DIR=../frontend/dist
 make run ALLOWED_ORIGINS="http://localhost:3000,http://localhost:8080"
 ```
 
+## Running the BFF with mock llama stack client
+
+In order for easy development it is possible to run the BFF in such a way that it will return mock data from endpoints that call out to the llamastack service in production.
+
+```bash
+# Run the BFF with mock llama stack client
+make run MOCK_LS_CLIENT=true
+```
+
 ## Building and Running with Docker
 
 The project includes a multi-stage Dockerfile that builds both the frontend and backend components and creates a minimal production image.
