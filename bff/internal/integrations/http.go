@@ -191,5 +191,5 @@ func logUpstreamReq(logger *slog.Logger, reqId string, req *http.Request) {
 }
 
 func logUpstreamResp(logger *slog.Logger, reqId string, resp *http.Response, body []byte) {
-	logger.Debug("Received upstream HTTP response", slog.String("request_id", reqId), slog.Any("response", helper.ResponseLogValuer{Response: resp}))
+	logger.Debug("Received upstream HTTP response", slog.String("request_id", reqId), slog.Any("response", helper.ResponseLogValuer{Response: resp, Body: body}))
 }

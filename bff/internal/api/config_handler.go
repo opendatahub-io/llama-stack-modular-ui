@@ -20,5 +20,9 @@ func (app *App) HandleConfig(w http.ResponseWriter, r *http.Request, _ httproute
 		OAuthRedirectURI: app.config.OAuthRedirectURI,
 		OAuthServerURL:   app.config.OAuthServerURL,
 	}
-	_ = app.WriteJSON(w, http.StatusOK, resp, nil)
+	err := app.WriteJSON(w, http.StatusOK, resp, nil)
+
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }

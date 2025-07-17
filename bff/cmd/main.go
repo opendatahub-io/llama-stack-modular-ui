@@ -16,12 +16,13 @@ import (
 )
 
 func main() {
-	fmt.Println("BFF v7")
 	var cfg config.EnvConfig
+	// General BFF configuration
 	flag.IntVar(&cfg.Port, "port", getEnvAsInt("PORT", 8080), "API server port")
 	flag.StringVar(&cfg.StaticAssetsDir, "static-assets-dir", "./static", "Configure frontend static assets root directory")
 	flag.TextVar(&cfg.LogLevel, "log-level", parseLevel(getEnvAsString("LOG_LEVEL", "DEBUG")), "Sets server log level, possible values: error, warn, info, debug")
 	flag.Func("allowed-origins", "Sets allowed origins for CORS purposes, accepts a comma separated list of origins or * to allow all, default none", newOriginParser(&cfg.AllowedOrigins, getEnvAsString("ALLOWED_ORIGINS", "")))
+	flag.BoolVar(&cfg.MockLSClient, "mock-ls-client", false, "Use mock Llama Stack client")
 
 	// Llama Stack configuration
 	flag.StringVar(&cfg.LlamaStackURL, "llama-stack-url", getEnvAsString("LLAMA_STACK_URL", ""), "Llama Stack server URL for proxying requests")
