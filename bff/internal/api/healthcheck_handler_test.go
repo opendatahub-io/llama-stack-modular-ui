@@ -29,7 +29,7 @@ func TestHealthCheckHandler(t *testing.T) {
 	app.HealthcheckHandler(rr, req, nil)
 
 	rs := rr.Result()
-	defer rs.Body.Close()
+	defer func() { _ = rs.Body.Close() }()
 
 	body, err := io.ReadAll(rs.Body)
 	assert.NoError(t, err)

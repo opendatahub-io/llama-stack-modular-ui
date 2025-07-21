@@ -14,7 +14,6 @@ type ModelsInterface interface {
 }
 
 type Models struct {
-	ModelsInterface
 }
 
 func (m Models) GetAllModels(client integrations.HTTPClientInterface) (*llamastack.ModelList, error) {
