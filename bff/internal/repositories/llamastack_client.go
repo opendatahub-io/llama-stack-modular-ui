@@ -2,10 +2,12 @@ package repositories
 
 type LlamaStackClientInterface interface {
 	ModelsInterface
+	VectorDBInterface
 }
 
 type LlamaStackClient struct {
-	Models
+	UIModels
+	UIVectorDB
 }
 
 func NewLlamaStackClient() (LlamaStackClientInterface, error) {
