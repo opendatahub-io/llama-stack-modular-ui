@@ -27,6 +27,9 @@ const (
 
 	ModelListPath    = ApiPathPrefix + "/models"
 	VectorDBListPath = ApiPathPrefix + "/vector-dbs"
+
+	// making it simpler than /tool-runtime/rag-tool/insert
+	UploadPath = ApiPathPrefix + "/upload"
 )
 
 type App struct {
@@ -96,6 +99,10 @@ func (app *App) Routes() http.Handler {
 
 	apiRouter.GET(ModelListPath, app.RequireAuthRoute(app.AttachRESTClient(app.GetAllModelsHandler)))
 	apiRouter.GET(VectorDBListPath, app.RequireAuthRoute(app.AttachRESTClient(app.GetAllVectorDBsHandler)))
+
+	// POST to register the vectorDB (/v1/vector-dbs)
+	apiRouter.POST(VectorDBListPath, app.RequireAuthRoute(app.AttachRESTClient(app.RegisterVectorDBHandler)))
+	apiRouter.POST(UploadPath, app.RequireAuthRoute(app.AttachRESTClient(app.UploadHandler)))
 
 	// App Router
 	appMux := http.NewServeMux()
