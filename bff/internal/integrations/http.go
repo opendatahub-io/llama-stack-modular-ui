@@ -114,7 +114,8 @@ func (c *HTTPClient) POST(url string, body io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
-	if response.StatusCode != http.StatusCreated {
+	// Certain operations like DB creation just return 200
+	if response.StatusCode != http.StatusCreated && response.StatusCode != http.StatusOK {
 		var errorResponse ErrorResponse
 		if err := json.Unmarshal(responseBody, &errorResponse); err != nil {
 			return nil, fmt.Errorf("error parsing error response: %w", err)
