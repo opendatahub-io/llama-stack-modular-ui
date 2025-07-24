@@ -3,20 +3,22 @@ package repositories
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations/llamastack"
 )
 
-const modelsPath = "/v1/openai/v1/models"
+const modelsPath = "/v1/models"
 
+// Used on the FE side to interact with the models API.
 type ModelsInterface interface {
 	GetAllModels(client integrations.HTTPClientInterface) (*llamastack.ModelList, error)
 }
 
-type Models struct {
+type UIModels struct {
 }
 
-func (m Models) GetAllModels(client integrations.HTTPClientInterface) (*llamastack.ModelList, error) {
+func (m UIModels) GetAllModels(client integrations.HTTPClientInterface) (*llamastack.ModelList, error) {
 	response, err := client.GET(modelsPath)
 
 	if err != nil {

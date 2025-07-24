@@ -2,11 +2,12 @@ package api
 
 import (
 	"fmt"
-	"github.com/opendatahub-io/llama-stack-modular-ui/internal/mocks"
-	"github.com/opendatahub-io/llama-stack-modular-ui/internal/repositories"
 	"log/slog"
 	"net/http"
 	"path"
+
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/mocks"
+	"github.com/opendatahub-io/llama-stack-modular-ui/internal/repositories"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/config"
@@ -24,7 +25,8 @@ const (
 
 	ConfigPath = ApiPathPrefix + "/config"
 
-	ModelListPath = ApiPathPrefix + "/models"
+	ModelListPath    = ApiPathPrefix + "/models"
+	VectorDBListPath = ApiPathPrefix + "/vector-dbs"
 )
 
 type App struct {
@@ -93,6 +95,7 @@ func (app *App) Routes() http.Handler {
 	apiRouter.GET(ConfigPath, app.HandleConfig)
 
 	apiRouter.GET(ModelListPath, app.RequireAuthRoute(app.AttachRESTClient(app.GetAllModelsHandler)))
+	apiRouter.GET(VectorDBListPath, app.RequireAuthRoute(app.AttachRESTClient(app.GetAllVectorDBsHandler)))
 
 	// App Router
 	appMux := http.NewServeMux()

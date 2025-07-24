@@ -2,17 +2,22 @@ package api
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/constants"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/integrations/llamastack"
 	"github.com/opendatahub-io/llama-stack-modular-ui/internal/models"
-	"net/http"
-	"time"
 )
 
 type ModelEnvelope Envelope[models.Model, None]
 type ModelListEnvelope Envelope[models.ModelList, None]
+
+const (
+	LLMModelType       = "llm"
+	EmbeddingModelType = "embedding"
+)
 
 func (app *App) GetAllModelsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	client, ok := r.Context().Value(constants.LlamaStackHttpClientKey).(integrations.HTTPClientInterface)
@@ -23,10 +28,31 @@ func (app *App) GetAllModelsHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	modelList, err := app.repositories.LlamaStackClient.GetAllModels(client)
-
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
+	}
+
+	params := r.URL.Query()
+	modelType := params.Get("model_type")
+
+	switch modelType {
+	case LLMModelType:
+		llmModels := []llamastack.Model{}
+		for _, model := range modelList.Data {
+			if model.ModelType == llamastack.LLMModelType {
+				llmModels = append(llmModels, model)
+			}
+		}
+		modelList = &llamastack.ModelList{Data: llmModels}
+	case EmbeddingModelType:
+		embeddingModels := []llamastack.Model{}
+		for _, model := range modelList.Data {
+			if model.ModelType == llamastack.EmbeddingModelType {
+				embeddingModels = append(embeddingModels, model)
+			}
+		}
+		modelList = &llamastack.ModelList{Data: embeddingModels}
 	}
 
 	result := ModelListEnvelope{
@@ -38,14 +64,14 @@ func (app *App) GetAllModelsHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
-
 }
 
 func convertModel(model *llamastack.Model) models.Model {
 	return models.Model{
-		Id:      model.Id,
-		Created: time.Unix(model.Created, 0).UTC(),
-		OwnedBy: model.OwnedBy,
+		Identifier:         model.Identifier,
+		ModelType:          string(model.ModelType),
+		ProviderID:         model.ProviderID,
+		ProviderResourceID: model.ProviderResourceID,
 	}
 }
 

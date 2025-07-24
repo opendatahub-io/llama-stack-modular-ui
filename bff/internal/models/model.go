@@ -1,11 +1,11 @@
 package models
 
-import "time"
-
 type Model struct {
-	Id      string    `json:"id"`
-	Created time.Time `json:"created"`
-	OwnedBy string    `json:"owned_by"`
+	Identifier string `json:"identifier"`
+	ProviderID string `json:"provider_id"`
+	// Can be either llm or embedding
+	ModelType          string `json:"model_type"`
+	ProviderResourceID string `json:"provider_resource_id"`
 }
 
 // Note: Always create a bespoke type for list types, this creates minimal work later if implementing pagination
@@ -13,4 +13,15 @@ type Model struct {
 
 type ModelList struct {
 	Items []Model `json:"items"`
+}
+
+type VectorDB struct {
+	EmbeddingDimension int64  `json:"embedding_dimension"`
+	EmbeddingModel     string `json:"embedding_model"`
+	Identifier         string `json:"identifier"`
+	ProviderID         string `json:"provider_id"`
+	ProviderResourceID string `json:"provider_resource_id"`
+}
+type VectorDBList struct {
+	Items []VectorDB `json:"items"`
 }
