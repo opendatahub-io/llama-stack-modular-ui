@@ -32,10 +32,10 @@ import {
 } from '@patternfly/react-core';
 import '@patternfly/chatbot/dist/css/main.css';
 import { ShareSquareIcon } from '@patternfly/react-icons';
+import { getId } from '~/src/app/utilities/utils';
+import useFetchLlamaModels from '~/src/app/utilities/useFetchLlamaModels';
 import { CHAT_COMPLETION_URL } from '@app/services/llamaStackService';
 import { authService } from '@app/services/authService';
-import useFetchLlamaModels from '@app/utils/useFetchLlamaModels';
-import { getId } from '@app/utils/utils';
 import botAvatar from '@app/bgimages/bot_avatar.svg';
 import userAvatar from '@app/bgimages/user_avatar.svg';
 import { ChatbotMessages } from './ChatbotMessagesList';

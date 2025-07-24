@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
 import type { Model as LlamaModel } from 'llama-stack-client/resources/models';
-import axios from '@app/utils/axios';
+import axios from '@app/utilities/axios';
 import { authService } from './authService';
 
 // API URL constants
